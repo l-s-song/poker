@@ -24,33 +24,20 @@ struct node{
   ll data;
 };
 
-/*
-
-Player
-=====
-ID
-Name
-
-Game
-=====
-vector<Player> players]
-int buttonLocation;
-int currentTurn
-int currentBet
-int betDifference
-int smallBlind
-int bigBlind
-int pot
-vector<int> deck
-map<int, int> bets
-map<int, int> stacks
-
-*/
+string repeatString(string s, int a){
+  string ret;
+  for(int i = 0; i < a; i++){
+    ret += s;
+  }
+  return ret;
+}
 
 void WipeScreen(){
-  for(int i = 0; i < 200; i++){
-    cout << endl;
-  }
+  cout << repeatString("\n", 200) << endl;
+}
+
+int NumDigits(int a){
+  return floor(log10(max(a, 1))) + 1;
 }
 
 enum Suit {
@@ -72,6 +59,13 @@ enum HandRank{
   Quads,
   StraightFlush
 };
+
+string HRtoString(int a){
+  vector<string> store = {"High Card", "Pair", "Two Pair",
+    "Trips", "Straight", "Flush", "Full House", "Quads",
+    "Straight Flush"};
+  return store[a];
+}
 
 class Card {
   int rank;
@@ -113,25 +107,29 @@ public:
 
   string ShowCard(){
     string display;
-    if(rank <= 10){
+    if(rank <= 9){
       display += '0' + rank;
     } else {
-      if(rank == 11){
-        display += "Q";
+      if(rank == 10){
+        display += "T";
+      } else if(rank == 11){
+        display += "J";
       } else if (rank == 12){
-        display += "K";
+        display += "Q";
       } else if (rank == 13){
+        display += "K";
+      } else if (rank == 14){
         display += "A";
       }
     }
     if(suit == Hearts){
-      display += "H";
+      display += "\u2665";
     } else if (suit == Spades){
-      display += "S";
+      display += "\u2660";
     } else if (suit == Diamonds){
-      display += "D";
+      display += "\u25C6";
     } else if (suit == Clubs){
-      display += "C";
+      display += "\u2663";
     }
     return display;
   }
@@ -172,7 +170,7 @@ public:
     string s;
     for(int i = 0; i < cards.size(); i++){
       s += cards[i].ShowCard();
-      s += "";
+      s += " ";
     }
     return s;
   }
@@ -197,7 +195,7 @@ public:
   int currentTurn;
   int currentBet;
   int betDifference;
-  set<int> activePlayers;
+  set<int> activePlayers; // 170, 194, 230
   //update throughout rounds
   int pot;
   //update throughout and at beginning of rounds
@@ -223,7 +221,7 @@ public:
   }
 
   bool IsValidBet(int player, int betSize){
-    if(betSize - currentBet >= betDifference
+    if(betSize - currentBet >= max(betDifference, bigBlind)
       || betSize == stacks[player]){
         return true;
     } else {
@@ -233,15 +231,18 @@ public:
 
   void Bet(int player, int betSize){
     player = player % players.size();
-    if(stacks[player] >= betSize){
-      stacks[player] -= betSize;
-      bets[player] += betSize;
-      betDifference = betSize - currentBet;
+    if(stacks[player] >= betSize - bets[player]){
+      stacks[player] -= betSize - bets[player];
+      bets[player] = betSize;
+      if (betSize != currentBet) {
+        betDifference = betSize - currentBet;
+      }
       currentBet = betSize;
     } else {
       bets[player] += stacks[player];
-      betDifference = stacks[player] - currentBet;
-      currentBet = stacks[player];
+      if(bets[player] > (currentBet + betDifference) ){
+        betDifference = stacks[player] - currentBet;
+      }
       stacks[player] = 0;
     }
   }
@@ -255,64 +256,57 @@ public:
 
   void BettingRound(){
     int prevBettor = currentTurn;
+    // cout << "prevBettor: " << prevBettor << endl;
     bool roundDone = false;
 
-    while(!roundDone){
-      if(activePlayers.count(currentTurn) != 0){
-        if(board.size() > 0){
-          cout << "The board is ";
-          for(int i = 0; i < board.size(); i++){
-            cout << board[i].ShowCard() << " ";
+    while(!roundDone && activePlayers.size() >= 2){
+      if(activePlayers.count(currentTurn) == 1){
+        WipeScreen();
+        cout << ShowTable(false);
+        if(stacks[currentTurn] != 0){
+          char ans = '0';
+          if(bets[currentTurn] >= currentBet){
+            while(ans != 'c' && ans != 'b'){
+              cout << "Check or Bet? c/b" << endl;
+              cin >> ans;
+            }
+          } else {
+            while(ans != 'f' && ans != 'k' && ans != 'r'){
+              cout << "Fold or Call or Raise? f/c/r" << endl;
+              cin >> ans;
+              if (ans == 'c') {
+                ans = 'k';
+              }
+            }
           }
-          cout << endl;
-        }
-        cout << "It is " << players[currentTurn].name <<
-          "\' turn." << endl;
-        cout << "Stack size:  " << stacks[currentTurn] <<
-        " " << "Bets made: " << bets[currentTurn] <<
-          " " << endl;
-        cout << "You must match a raise of " << currentBet
-          << "." << endl;
+          if(ans == 'c'){
+            cout << "You checked." << endl;
+          } else if (ans == 'f'){
+            cout << "You folded." << endl;
+            activePlayers.erase(currentTurn);
+          } else if (ans == 'k'){
+            Bet(currentTurn, currentBet);
+          } else if (ans == 'r' || ans == 'b'){
+            int bet = 0;
+            cout << "How much are you betting?" << endl;
+            cin >> bet;
+            while(!IsValidBet(currentTurn, bet)){
+              cin.clear();
+              cin.ignore();
+              cout << "That is not a valid bet size." << endl;
+              cin >> bet;
+            }
+            Bet(currentTurn, bet);
+            prevBettor = currentTurn;
+          }
+          cin.ignore();
 
-        char ans;
-        if(bets[currentTurn] >= currentBet){
-          while(ans != 'c' && ans != 'b'){
-            cout << "Check or Bet? c/b" << endl;
-            cin >> ans;
-          }
-        } else {
-          while(ans != 'b' && ans != 'f'){
-            cout << "Fold or Bet? f/b" << endl;
-            cin >> ans;
-          }
-        }
-        if(ans == 'c'){
-          cout << "You checked." << endl;
-        } else if (ans == 'f'){
-          cout << "You folded." << endl;
-          activePlayers.erase(currentTurn);
-        } else if (ans == 'B'){
-          int bet = 0;
-          cout << "How much are you betting?" << endl;
-          cin >> bet;
-          while(!IsValidBet(currentTurn, bet)){
-            cout << "Try again" << endl;
-            cin >>  bet;
-          }
-          Bet(currentTurn, bet);
-          prevBettor = currentTurn;
         }
       }
-      bool hasmoney = true;
-      while(hasmoney){
-        currentTurn++;
-        currentTurn %= players.size();
-        if(currentTurn == prevBettor){
-          roundDone = true;
-        }
-        if(stacks[currentTurn] != 0){
-          hasmoney = false;
-        }
+      currentTurn++;
+      currentTurn %= players.size();
+      if(currentTurn == prevBettor){
+        roundDone = true;
       }
     }
   }
@@ -371,6 +365,17 @@ public:
             }
             return {StraightFlush, straightflush};
           }
+          if (inarow == 4 &&
+            orderedSuit[i][orderedSuit[i].size() - 1] == 2 &&
+            orderedSuit[i][0] == 14){
+            vector<Card> straightflush;
+            for(int k = orderedSuit[i].size() - 1;
+              k >= orderedSuit[i].size() - 4; k--){
+              straightflush.push_back(Card(orderedSuit[i][k], Suit(i)));
+            }
+            straightflush.push_back(Card(orderedSuit[i][0], Suit(i)));
+            return {StraightFlush, straightflush};
+          }
         }
       }
     }
@@ -421,12 +426,20 @@ public:
       } else {
         inarow = 1;
       }
-      if (inarow >= 5){
+      if (inarow >= 5 ){
         vector<Card> straightHand;
         for(int j = i; j < i+5; j++){
           straightHand.push_back(Card(j, orderedRank[j][0]));
         }
         return {Straight, straightHand};
+      } else if (inarow >= 4 && orderedRank[14].size() >= 1 &&
+        i == 2) {
+          vector<Card> straightHand;
+          straightHand.push_back(Card(14, orderedRank[14][0]));
+          for(int j = i; j < i+4; j++){
+            straightHand.push_back(Card(j, orderedRank[j][0]));
+          }
+          return {Straight, straightHand};
       }
     }
     if(trips.size() >= 1){
@@ -456,52 +469,60 @@ public:
   }
 
   void Showdown(){
-    if(activePlayers.size() == 1){
-      cout << "Folded to " <<
-      players[*activePlayers.begin()].name << endl;
-    }
+    WipeScreen();
+    cout << ShowTable(true);
     vector<pair<int, pair<HandRank, vector<Card>>>> playerHands;
-    for(int i : activePlayers){
-      playerHands.push_back({i, GetHandRank(i)});
-    }
-    sort(playerHands.begin(), playerHands.end(),
-      [](const pair<int, pair<HandRank, vector<Card>>>& a,
-         const pair<int, pair<HandRank, vector<Card>>>& b)
-      {
-        if(a.second.first == b.second.first){
-          for(int i = 0; i < 7; i++){
-            if(a.second.second[i].GetRank() != b.second.second[i].GetRank() ){
-              return a.second.second[i].GetRank() > b.second.second[i].GetRank();
-            }
-          }
-        } else {
-          return a.second.first > b.second.first;
-        }
+    int winner = 0;
+    if(activePlayers.size() == 1){
+      winner = *activePlayers.begin();
+    } else {
+      for(int i : activePlayers){
+        playerHands.push_back({i, GetHandRank(i)});
       }
-    );
-    //sorts playerHands from highest to lowest
-    stacks[playerHands[0].first] += pot;
-    if(activePlayers.size() > 1){
-      cout << players[playerHands[0].first].name <<
-        "wins the pot of " << pot << "with a " <<
-        playerHands[0].second.first << ", " <<
-        Deck(playerHands[0].second.second).ShowDeck() << endl;
+
+      sort(playerHands.begin(), playerHands.end(),
+        [](const pair<int, pair<HandRank, vector<Card>>>& a,
+           const pair<int, pair<HandRank, vector<Card>>>& b)
+        {
+          if(a.second.first == b.second.first){
+            for(int i = 0; i < 7; i++){
+              if(a.second.second[i].GetRank() != b.second.second[i].GetRank() ){
+                return a.second.second[i].GetRank() > b.second.second[i].GetRank();
+              }
+            }
+          } else {
+            return a.second.first > b.second.first;
+          }
+        }
+      );
+      //sorts playerHands from highest to lowest
+      winner = playerHands[0].first;
     }
-    cout << players[playerHands[0].first].name << "now has" <<
-      stacks[playerHands[0].first] << "chips." << endl;
+    stacks[winner] += pot;
+
+    cout << players[winner].name <<
+    " wins the pot of " << pot;
+    if(activePlayers.size() > 1){
+      cout << " with a " <<
+        HRtoString(playerHands[0].second.first) << ": " <<
+        Deck(playerHands[0].second.second).ShowDeck() << endl;
+    } else {
+      cout << "." << endl;
+    }
+    cout << endl;
     for(int i = 1; i < playerHands.size(); i++){
       cout << players[playerHands[i].first].name <<
-        "has a " << playerHands[i].second.first << ", " <<
+        " has a " << HRtoString(playerHands[i].second.first) << ", " <<
         Deck(playerHands[i].second.second).ShowDeck() << endl;
     }
+    if (playerHands.size() >= 2) {
+      cout << endl;
+    }
+    cout << players[winner].name << " now has " <<
+      stacks[winner] << " chips." << endl;
   }
 
   void PlayHand(){
-    for(int i = 0; i < players.size(); i++){
-      cout << players[i].name << " has " << stacks[i] <<
-      " chips." << endl;
-    }
-    cout << endl;
     activePlayers = set<int>();
     for(int i = 0; i < players.size(); i++){
       if(stacks[i] > 0){
@@ -512,12 +533,12 @@ public:
     pot = 0;
     bets = map<int, int>(); // ?
     board = vector<Card>();
-    if(players.size() == 2 ){
+    if(players.size() == 2){
       currentTurn = buttonLocation;
     } else {
-      currentTurn = buttonLocation + 1;
+      currentTurn = (buttonLocation + 3) % players.size();
     }
-    cin.ignore();
+    WipeScreen();
     for(int i = 0; i < players.size(); i++){
       Card a = deck.GetCard();
       Card b = deck.GetCard();
@@ -525,11 +546,12 @@ public:
       cout << "Showing " << players[i].name
         << "\'s hand. Press enter to continue." << endl;
       cin.ignore();
+      WipeScreen();
       cout << players[i].name << ", " <<
         "your hand is " <<
         hands[i].first.ShowCard() << " " <<
-        hands[i].second.ShowCard() << "." << endl;
-      cout << "You have " << stacks[i] << " chips." << endl;
+        hands[i].second.ShowCard() << endl;
+      cout << endl;
       cout << "Press enter to continue." << endl;
       cin.ignore();
       WipeScreen();
@@ -541,34 +563,106 @@ public:
     PostBlind();
     BettingRound();
     //betting preflop
-    board.push_back(deck.GetCard());
-    board.push_back(deck.GetCard());
-    for(int i = 0; i < 3; i++){
+    if(activePlayers.size() >= 2){
       board.push_back(deck.GetCard());
-      currentTurn = buttonLocation + 1;
+      board.push_back(deck.GetCard());
+    }
+    for(int i = 0; i < 3; i++){
+      currentBet = 0;
+      betDifference = bigBlind;
+      currentTurn = (buttonLocation + 1) % players.size();
+      CollectPot();
       if(activePlayers.size() >= 2){
+        board.push_back(deck.GetCard());
         BettingRound();
         CollectPot();
       }
     }
     Showdown();
     buttonLocation++;
+    buttonLocation %= players.size();
     while(stacks[buttonLocation] == 0){
       buttonLocation++;
+      buttonLocation %= players.size();
     }
+    //cout << "TEST" << endl;
   }
 
   void PlayGame(){
     buttonLocation = (rand()) % players.size();
     while(true){
       PlayHand();
-      char c;
-      cout << "Press enter to continue." << endl;
-      cin >> c;
+      cout << endl << "Press enter to continue." << endl;
+      cin.ignore();
       WipeScreen();
     }
     //need to update players to remove knocked out
     //players
+  }
+
+  string ShowTable(bool isShowdown){
+    int longestName = 0;
+    for(int i = 0; i < players.size(); i++){
+      if(players[i].name.size() > longestName){
+        longestName = players[i].name.size();
+      }
+    }
+    int maxDigits = 0;
+    for(int i = 0; i < players.size(); i++){
+      int numDigits = NumDigits(stacks[i]);
+      if(numDigits > maxDigits){
+        maxDigits = numDigits;
+      }
+    }
+    int totalWidth = 19 + longestName + maxDigits;
+
+    string divider = "";
+    for(int i = 0; i < totalWidth; i++){
+      divider += "=";
+    }
+    divider += "|\n";
+
+    string table = divider;
+    if(board.size() > 0){
+      table += Deck(board).ShowDeck();
+      table += repeatString(" ", totalWidth - board.size()*3);
+      table += "|\n";
+    }
+    table += "Pot: " + to_string(pot) +
+      repeatString(" ", totalWidth - 5 - NumDigits(pot)) + "|\n";
+    table += divider;
+    for(int i = 0; i < players.size(); i++){
+      if(i == currentTurn){
+        table += "> ";
+      } else {
+        table += "  ";
+      }
+      table += players[i].name + repeatString(" ",
+        2 + longestName - players[i].name.size());
+      table += to_string(stacks[i]) + repeatString(" ",
+        maxDigits + 1 - NumDigits(stacks[i]));
+      if(i == buttonLocation){
+        table += "[B] ";
+      } else {
+        table += "    ";
+      }
+      if(activePlayers.count(i) == 1 && isShowdown){
+        if (activePlayers.size() > 1) {
+          table += "[ " + hands[i].first.ShowCard() + " " +
+            hands[i].second.ShowCard() + " ] ";
+        } else {
+          table += "Mucked    ";
+        }
+      } else if (activePlayers.count(i) == 1){
+        table += to_string(bets[i]) + repeatString(" ",
+        10 - NumDigits(bets[i]));
+      } else {
+        table += "Folded" + repeatString(" ", 4);
+      }
+      table += "|\n";
+    }
+    table += divider;
+    return table;
   }
 };
 
@@ -584,6 +678,7 @@ int main() {
     cin >> game.players[i].name;
     game.stacks[i] = game.bigBlind*100;
   }
+  cin.ignore();
   game.PlayGame();
   return 0;
 }

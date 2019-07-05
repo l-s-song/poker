@@ -1,0 +1,29 @@
+========================
+Ah 7d 2d
+Pot: 35
+========================
+  Louise    180      17
+  David     170      45
+  John      110      Folded
+> Nicholas  200      _
+  Carl      50  [B]  _
+========================
+The current bet is 25.
+Would you like to fold, call, or raise? (f/c/r)
+
+♥:\u2665 ◆:\u25C6
+♠:\u2660 ♣:\u2663
+
+=================================|
+Ah 7d 2d 7h 9c                   |
+Pot: 255                         |
+=================================|
+  Louise     90        [ Ac 7s ] |
+  David      170       Folded    |
+  John       110       Folded    |
+  Nicholas   110       [ 3d 4d ] |
+  Carl       50   [B]  Folded    |
+=================================|
+Louise wins the pot of 255 with a full house
+
+2 + longest + 2 + maxdigits + 5 + 10
