@@ -7,24 +7,13 @@
 #include <cmath>
 #include <fstream>
 #include <ctime>
+#include "Card.h"
+#include "Deck.h"
 
 using namespace std;
-typedef long long ll;
-template<typename A, typename B>
-using hmap = unordered_map<A, B>;
-typedef tuple<int, int> ii;
-typedef tuple<ll, ll> lii;
-#define PI 3.14159265358979323846
-#define inf 0x3f3f3f3f
-#define infl 0x3f3f3f3f3f3f3f3fL
-
-struct node{
-  node* prev;
-  node* next;
-  ll data;
-};
 
 string repeatString(string s, int a){
+  //returns string that is string s repeated a times
   string ret;
   for(int i = 0; i < a; i++){
     ret += s;
@@ -33,20 +22,14 @@ string repeatString(string s, int a){
 }
 
 void WipeScreen(){
+  //wipe terminal
   cout << repeatString("\n", 200) << endl;
 }
 
 int NumDigits(int a){
+  //calculate number of digits of int
   return floor(log10(max(a, 1))) + 1;
 }
-
-enum Suit {
-  Clubs,
-  Diamonds,
-  Hearts,
-  Spades,
-  NoSuit
-};
 
 enum HandRank{
   HighCard,
@@ -67,114 +50,6 @@ string HRtoString(int a){
   return store[a];
 }
 
-class Card {
-  int rank;
-  Suit suit;
-public:
-  Card(){
-    rank = -1;
-    suit = NoSuit;
-  }
-
-  Card(int rank, Suit suit) {
-    this->rank = rank;
-    this->suit = suit;
-  }
-
-  int GetRank() const {
-    if(rank == -1){
-      throw "Rank does not exist.";
-    } else {
-      return rank;
-    }
-  }
-
-  Suit GetSuit() const {
-    if(suit == NoSuit){
-      throw "Suit does not exist.";
-    } else {
-      return suit;
-    }
-  }
-
-  bool Equals(Card a) const {
-    if(rank == a.GetRank() && suit == a.GetSuit()){
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  string ShowCard(){
-    string display;
-    if(rank <= 9){
-      display += '0' + rank;
-    } else {
-      if(rank == 10){
-        display += "T";
-      } else if(rank == 11){
-        display += "J";
-      } else if (rank == 12){
-        display += "Q";
-      } else if (rank == 13){
-        display += "K";
-      } else if (rank == 14){
-        display += "A";
-      }
-    }
-    if(suit == Hearts){
-      display += "\u2665";
-    } else if (suit == Spades){
-      display += "\u2660";
-    } else if (suit == Diamonds){
-      display += "\u25C6";
-    } else if (suit == Clubs){
-      display += "\u2663";
-    }
-    return display;
-  }
-};
-
-class Deck {
-public:
-  vector<Card> cards;
-
-  Deck() {
-    Shuffle();
-  }
-
-  Deck(vector<Card> cards){
-    this->cards = cards;
-  }
-
-  void Shuffle(){
-    set<int> usedCards;
-    cards = vector<Card>();
-    while(usedCards.size() != 52){
-      int a = rand() % 52;
-      //a = 1-52
-      if(usedCards.count(a) == 0){
-        cards.push_back(Card(a/4 + 2, Suit(a%4)));
-      }
-      usedCards.insert(a);
-    }
-  }
-
-  Card GetCard(){
-    Card ret = cards.back();
-    cards.pop_back();
-    return ret;
-  }
-
-  string ShowDeck(){
-    string s;
-    for(int i = 0; i < cards.size(); i++){
-      s += cards[i].ShowCard();
-      s += " ";
-    }
-    return s;
-  }
-};
 
 class Player {
 public:
@@ -188,20 +63,20 @@ public:
   int smallBlind;
   int bigBlind;
   int stackSize;
-  //update at beginning of game
+  //multiples of bigblind to compute  starting stack
   int buttonLocation;
   Deck deck;
-  //update at beginning of round
   int currentTurn;
   int currentBet;
   int betDifference;
-  set<int> activePlayers; // 170, 194, 230
-  //update throughout rounds
+  set<int> activePlayers;
+  //players still active in betting round
   int pot;
-  //update throughout and at beginning of rounds
   map<int, int> bets;
+  //bets made and not yet collected into pot
   map<int, int> stacks;
   map<int, pair<Card, Card>> hands;
+  //cards dealt to people
   vector<Card> board;
 
   Game(int smallBlind, int bigBlind, int stackSize){
@@ -221,6 +96,7 @@ public:
   }
 
   bool IsValidBet(int player, int betSize){
+    //checks if bet/raise size is good. Doesn't do calls
     if(betSize - currentBet >= max(betDifference, bigBlind)
       || betSize == stacks[player]){
         return true;
@@ -230,6 +106,7 @@ public:
   }
 
   void Bet(int player, int betSize){
+    //handles mechanics of a bet
     player = player % players.size();
     if(stacks[player] >= betSize - bets[player]){
       stacks[player] -= betSize - bets[player];
@@ -248,6 +125,7 @@ public:
   }
 
   void CollectPot(){
+    //transfers bets into pot
     for(int i = 0; i < players.size(); i++){
       pot += bets[i];
       bets[i] = 0;
@@ -255,11 +133,13 @@ public:
   }
 
   void BettingRound(){
+    //handles a single round of betting. Ex. preflop is a single betting round.
     int prevBettor = currentTurn;
     // cout << "prevBettor: " << prevBettor << endl;
     bool roundDone = false;
 
     while(!roundDone && activePlayers.size() >= 2){
+      //doesn't run if only 1 player in hand
       if(activePlayers.count(currentTurn) == 1){
         WipeScreen();
         cout << ShowTable(false);
@@ -308,6 +188,8 @@ public:
       if(currentTurn == prevBettor){
         roundDone = true;
       }
+      //stops the while loop if the previous bettor is reached
+      //this is the first person to go if no one bets
     }
   }
 
@@ -330,9 +212,14 @@ public:
     }
 
   pair<HandRank, vector<Card>> GetHandRank(int player){
+    //From 7 cards, calculates the best 5 card hand and
+    //returns relevant cards in order
     vector<vector<Suit>> orderedRank(15);
+    //vector index indicaets rank, suits of that rank are stored in the vector cells
     vector<vector<int>> orderedSuit(4);
+    //vector index indicates suit, ranks of that suit are stored in the vector cells
     vector<Card> seven = board;
+    //has the 7 seven cards
     seven.push_back(hands[player].first);
     seven.push_back(hands[player].second);
     for(int i = 0; i < 7; i++){
@@ -376,6 +263,7 @@ public:
             straightflush.push_back(Card(orderedSuit[i][0], Suit(i)));
             return {StraightFlush, straightflush};
           }
+          //Ace-5 straight calculation
         }
       }
     }
@@ -385,8 +273,11 @@ public:
           return a.GetRank() < b.GetRank();
       }
     );
+    //sort cards by rank from smallest to largest
     vector<int> pairs;
+    //stores rank of any pairs
     vector<int> trips;
+    //stores rank of any trips
     //ordered greatest to least
     for(int i = 14; i >= 2; i--){
       if(orderedRank[i].size() == 2){
@@ -469,15 +360,19 @@ public:
   }
 
   void Showdown(){
+    //computes post-betting action, such as saying who won
     WipeScreen();
     cout << ShowTable(true);
     vector<pair<int, pair<HandRank, vector<Card>>>> playerHands;
     int winner = 0;
     if(activePlayers.size() == 1){
       winner = *activePlayers.begin();
+      //if only 1 remaining active player, they are the winner people
+      //foldled to
     } else {
       for(int i : activePlayers){
         playerHands.push_back({i, GetHandRank(i)});
+        //if multiple remaining players, get their hand ranks
       }
 
       sort(playerHands.begin(), playerHands.end(),
@@ -495,7 +390,7 @@ public:
           }
         }
       );
-      //sorts playerHands from highest to lowest
+      //sorts playerHands from highest to lowest, equivalent to sorting by rank
       winner = playerHands[0].first;
     }
     stacks[winner] += pot;
@@ -523,6 +418,7 @@ public:
   }
 
   void PlayHand(){
+    //plays a single hand, prefop through river
     activePlayers = set<int>();
     for(int i = 0; i < players.size(); i++){
       if(stacks[i] > 0){
@@ -531,8 +427,9 @@ public:
     }
     deck.Shuffle();
     pot = 0;
-    bets = map<int, int>(); // ?
+    bets = map<int, int>();
     board = vector<Card>();
+    //resetting data
     if(players.size() == 2){
       currentTurn = buttonLocation;
     } else {
@@ -556,8 +453,9 @@ public:
       cin.ignore();
       WipeScreen();
     }
+    //showing people their hands
     currentBet = bigBlind;
-    betDifference = bigBlind - smallBlind;
+    betDifference = bigBlind;
     board = vector<Card>();
 
     PostBlind();
@@ -567,6 +465,8 @@ public:
       board.push_back(deck.GetCard());
       board.push_back(deck.GetCard());
     }
+    //only add cards to their board if there are multiple players active
+    //to prevent rabbit hunt
     for(int i = 0; i < 3; i++){
       currentBet = 0;
       betDifference = bigBlind;
@@ -585,6 +485,7 @@ public:
       buttonLocation++;
       buttonLocation %= players.size();
     }
+    //button moved until it is at player with nonzero stack
     //cout << "TEST" << endl;
   }
 
@@ -601,6 +502,8 @@ public:
   }
 
   string ShowTable(bool isShowdown){
+    //creates boker board graphic which displays board, pot,
+    //stacks, bets, button, and who has folded
     int longestName = 0;
     for(int i = 0; i < players.size(); i++){
       if(players[i].name.size() > longestName){

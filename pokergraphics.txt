@@ -27,3 +27,18 @@ Pot: 255                         |
 Louise wins the pot of 255 with a full house
 
 2 + longest + 2 + maxdigits + 5 + 10
+
+
+Game
+PostBlind
+IsValidBet
+Bet
+CollectPot
+BettingRound
+FiveCards *
+GetHandRank *
+Showdown
+PlayHand
+PlayGame
+ShowTable
+
