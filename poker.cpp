@@ -93,7 +93,7 @@ public:
   vector<Card> board;
   bool roundDone;
   int prevBettor;
-  // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River
+  // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River,  4 = Over
   int bettingRound;
 
   Game(int smallBlind, int bigBlind, int stackSize){
@@ -102,10 +102,10 @@ public:
     this->stackSize = stackSize;
   }
 
-  bool IsValidBet(int betSize){
+  bool IsValidBet(int player, int betSize){
     //checks if bet/raise size is good. Doesn't do calls
     if(betSize - currentBet >= max(betDifference, bigBlind)
-      || betSize == stacks[currentTurn]){
+      || betSize == stacks[player]){
         return true;
     } else {
       return false;
@@ -124,9 +124,24 @@ public:
 
       board.push_back(deck.GetCard());
     }
-    currentBet = 0;
+
+    if (bettingRound == 0) {
+      if(stacks.size() == 2){
+        placeMoney(buttonLocation, smallBlind);
+        placeMoney(buttonLocation + 1, bigBlind);
+        currentTurn = buttonLocation;
+      } else {
+        placeMoney(buttonLocation + 1, smallBlind);
+        placeMoney(buttonLocation + 2, bigBlind);
+        currentTurn = (buttonLocation + 3) % stacks.size();
+      }
+      currentBet = bigBlind;
+    } else {
+      currentBet = 0;
+      currentTurn = (buttonLocation + 1) % stacks.size();
+    }
+
     betDifference = bigBlind;
-    currentTurn = (buttonLocation + 1) % stacks.size();
     prevBettor = currentTurn;
     roundDone = false;
   }
@@ -137,19 +152,17 @@ public:
   }
 
   void placeMoney(int player, int betSize) {
-    if(stacks[player] >= betSize - bets[player]){
+    player %= stacks.size();
+    if(stacks[player] > betSize - bets[player]){
       stacks[player] -= betSize - bets[player];
       bets[player] = betSize;
-      if (betSize != currentBet) {
-        betDifference = betSize - currentBet;
-      }
+      betDifference = max(betSize - currentBet, betDifference);
       currentBet = betSize;
     } else {
       bets[player] += stacks[player];
-      if(bets[player] > (currentBet + betDifference) ){
-        betDifference = stacks[player] - currentBet;
-      }
       stacks[player] = 0;
+      betDifference = max(bets[player] - currentBet, betDifference);
+      currentBet = bets[player];
     }
   }
 
@@ -177,7 +190,7 @@ public:
   }
 
   bool isHandOver() {
-    return activePlayers.size() < 2;
+    return bettingRound > 3 || activePlayers.size() < 2;
   }
 
   bool isBettingRoundOver() {
@@ -248,7 +261,7 @@ public:
             int bet = 0;
             cout << "How much are you betting?" << endl;
             cin >> bet;
-            while(!IsValidBet(bet)){
+            while(!IsValidBet(currentTurn, bet)){
               cin.clear();
               cin.ignore();
               cout << "That is not a valid bet size." << endl;
@@ -532,7 +545,7 @@ public:
       WipeScreen();
     }
     BettingRound();
-    for(int i = 0; !isHandOver() && i < 3; i++){
+    while(!isHandOver()){
       BettingRound();
     }
     Showdown();
@@ -560,20 +573,6 @@ public:
     bets.clear();
     board.clear();
     bettingRound = 0;
-
-    // Post Blinds
-    currentBet = bigBlind;
-    betDifference = bigBlind;
-
-    if(stacks.size() == 2){
-      placeMoney(buttonLocation, smallBlind);
-      placeMoney(buttonLocation + 1, bigBlind);
-      currentTurn = buttonLocation;
-    } else {
-      placeMoney(buttonLocation + 1, smallBlind);
-      placeMoney(buttonLocation + 2, bigBlind);
-      currentTurn = (buttonLocation + 3) % stacks.size();
-    }
   }
 
   void endHand() {
