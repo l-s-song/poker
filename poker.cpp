@@ -40,7 +40,8 @@ enum HandRank{
   Flush,
   FullHouse,
   Quads,
-  StraightFlush
+  StraightFlush,
+  NoHand = -1
 };
 
 string HRtoString(int a){
@@ -101,10 +102,10 @@ public:
     this->stackSize = stackSize;
   }
 
-  bool IsValidBet(int player, int betSize){
+  bool IsValidBet(int betSize){
     //checks if bet/raise size is good. Doesn't do calls
     if(betSize - currentBet >= max(betDifference, bigBlind)
-      || betSize == stacks[player]){
+      || betSize == stacks[currentTurn]){
         return true;
     } else {
       return false;
@@ -135,12 +136,7 @@ public:
     bettingRound++;
   }
 
-  void Bet(int player, int betSize){
-    if (betSize > currentBet) {
-      prevBettor = currentTurn;
-    }
-    //handles mechanics of a bet
-    player = player % stacks.size();
+  void placeMoney(int player, int betSize) {
     if(stacks[player] >= betSize - bets[player]){
       stacks[player] -= betSize - bets[player];
       bets[player] = betSize;
@@ -155,14 +151,27 @@ public:
       }
       stacks[player] = 0;
     }
+  }
+
+  void Bet(int betSize){
+    if (betSize > currentBet) {
+      prevBettor = currentTurn;
+    }
+    placeMoney(currentTurn, betSize);
+    //handles mechanics of a bet
     handleEndAction();
   }
 
-  void Call(int player) {
-    Bet(player, currentBet);
+  void Call() {
+    placeMoney(currentTurn, currentBet);
+    handleEndAction();
   }
 
-  void Fold(int player) {
+  void Check() {
+    handleEndAction();
+  }
+
+  void Fold() {
     activePlayers.erase(currentTurn);
     handleEndAction();
   }
@@ -208,7 +217,6 @@ public:
     initBettingRound();
 
     while(!isBettingRoundOver()){
-      //doesn't run if only 1 player in hand
       if(!hasFolded(currentTurn)){
         WipeScreen();
         cout << ShowTable(false);
@@ -230,22 +238,23 @@ public:
           }
           if(ans == 'c'){
             cout << "You checked." << endl;
+            Check();
           } else if (ans == 'f'){
             cout << "You folded." << endl;
-            Fold(currentTurn);
+            Fold();
           } else if (ans == 'k'){
-            Call(currentTurn);
+            Call();
           } else if (ans == 'r' || ans == 'b'){
             int bet = 0;
             cout << "How much are you betting?" << endl;
             cin >> bet;
-            while(!IsValidBet(currentTurn, bet)){
+            while(!IsValidBet(bet)){
               cin.clear();
               cin.ignore();
               cout << "That is not a valid bet size." << endl;
               cin >> bet;
             }
-            Bet(currentTurn, bet);
+            Bet(bet);
           }
           cin.ignore();
         }
@@ -275,20 +284,27 @@ public:
       return primary;
     }
 
-    FinalHand GetFinalHand(int player){
+    FinalHand GetFinalHand(int player) {
     //From 7 cards, calculates the best 5 card hand and
     //returns relevant cards in order
     vector<vector<Suit>> orderedRank(15);
     //vector index indicaets rank, suits of that rank are stored in the vector cells
     vector<vector<int>> orderedSuit(4);
     //vector index indicates suit, ranks of that suit are stored in the vector cells
-    vector<Card> seven = board;
-    //has the 7 seven cards
-    seven.push_back(hands[player].first);
-    seven.push_back(hands[player].second);
-    for(int i = 0; i < 7; i++){
-      orderedRank[seven[i].GetRank()].push_back(seven[i].GetSuit());
-      orderedSuit[seven[i].GetSuit()].push_back(seven[i].GetRank());
+    vector<Card> finalHand;
+    finalHand.push_back(hands[player].first);
+    finalHand.push_back(hands[player].second);
+    if (board.size() < 3) {
+      return {NoHand, finalHand};
+    } else {
+      for(Card& c : board) {
+        finalHand.push_back(c);
+      }
+    }
+    //has the 7 finalHand cards
+    for(Card& c : finalHand){
+      orderedRank[c.GetRank()].push_back(c.GetSuit());
+      orderedSuit[c.GetSuit()].push_back(c.GetRank());
     }
     bool isFlush = false;
     bool isStraightFlush = false;
@@ -331,7 +347,7 @@ public:
         }
       }
     }
-    sort(seven.begin(), seven.end(),
+    sort(finalHand.begin(), finalHand.end(),
       [](const Card& a, const Card& b)
       {
           return a.GetRank() < b.GetRank();
@@ -353,7 +369,7 @@ public:
         for(int j = 0; j < 4; j++){
           quadhand.push_back(Card(i, orderedRank[i][j]));
         }
-        return {Quads, FiveCards(quadhand, seven)};
+        return {Quads, FiveCards(quadhand, finalHand)};
       }
     }
     if(pairs.size() >= 1 && trips.size() >= 1){
@@ -402,7 +418,7 @@ public:
       for(int i = 0; i < 3; i++){
         tripsHand.push_back(Card(trips[0], orderedRank[trips[0]][i]));
       }
-      return {Trips, FiveCards(tripsHand, seven)};
+      return {Trips, FiveCards(tripsHand, finalHand)};
     }
     if(pairs.size() >= 2){
       vector<Card> twoPair;
@@ -411,16 +427,16 @@ public:
           twoPair.push_back(Card(pairs[i], orderedRank[pairs[i]][j]));
         }
       }
-      return {TwoPair, FiveCards(twoPair, seven)};
+      return {TwoPair, FiveCards(twoPair, finalHand)};
     }
     if(pairs.size() >= 1){
       vector<Card> pairHand;
       for(int i = 0; i < 2; i++){
         pairHand.push_back(Card(pairs[0], orderedRank[pairs[0]][i]));
       }
-      return {Pair, FiveCards(pairHand, seven)};
+      return {Pair, FiveCards(pairHand, finalHand)};
     }
-    return {HighCard, FiveCards(vector<Card>(), seven)};
+    return {HighCard, FiveCards(vector<Card>(), finalHand)};
   }
 
   vector<winnerData> getWinners() {
@@ -493,7 +509,7 @@ public:
       stacks[winner] << " chips." << endl;
   }
 
-  void playHand() {
+  void PlayHand() {
     vector<int> newStacks;
     for(int i = 0; i < stacks.size(); i++) {
       newStacks.push_back(stacks[i]);
@@ -524,8 +540,8 @@ public:
   }
 
   void initHand( vector<int>& playerStacks ) {
-    activePlayers.empty();
-    stacks.empty();
+    activePlayers.clear();
+    stacks.clear();
 
     // Deal cards and initialize player data
     deck.Shuffle();
@@ -541,8 +557,8 @@ public:
 
     // Initialize game data
     pot = 0;
-    bets.empty();
-    board.empty();
+    bets.clear();
+    board.clear();
     bettingRound = 0;
 
     // Post Blinds
@@ -550,17 +566,12 @@ public:
     betDifference = bigBlind;
 
     if(stacks.size() == 2){
-      Bet(buttonLocation, smallBlind);
-      Bet(buttonLocation + 1, bigBlind);
-    } else {
-      Bet(buttonLocation + 1, smallBlind);
-      Bet(buttonLocation + 2, bigBlind);
-    }
-
-    // Set active player location
-    if(stacks.size() == 2){
+      placeMoney(buttonLocation, smallBlind);
+      placeMoney(buttonLocation + 1, bigBlind);
       currentTurn = buttonLocation;
     } else {
+      placeMoney(buttonLocation + 1, smallBlind);
+      placeMoney(buttonLocation + 2, bigBlind);
       currentTurn = (buttonLocation + 3) % stacks.size();
     }
   }
