@@ -9,7 +9,7 @@ public:
 
   Deck();
 
-  Deck(vector<Card>& cards);
+  Deck(const vector<Card>& cards);
 
   void Shuffle();
 

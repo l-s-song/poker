@@ -4,7 +4,7 @@ Deck::Deck() {
   Shuffle();
 }
 
-Deck::Deck(vector<Card>& cards){
+Deck::Deck(const vector<Card>& cards){
   this->cards = cards;
 }
 
