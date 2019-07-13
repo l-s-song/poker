@@ -84,7 +84,8 @@ public:
   int betDifference;
   set<int> activePlayers;
   //players still active in betting round
-  int pot;
+  vector<int> pots;
+  vector<set<int>> potEligibility;
   map<int, int> bets;
   //bets made and not yet collected into pot
   map<int, int> stacks;
@@ -105,7 +106,7 @@ public:
   bool IsValidBet(int player, int betSize){
     //checks if bet/raise size is good. Doesn't do calls
     if(betSize - currentBet >= max(betDifference, bigBlind)
-      || betSize == stacks[player]){
+      || betSize == stacks[player] + bets[player]){
         return true;
     } else {
       return false;
@@ -141,8 +142,13 @@ public:
       currentTurn = (buttonLocation + 1) % stacks.size();
     }
 
+    while(hasFolded(currentTurn)) {
+      currentTurn = (currentTurn + 1) % stacks.size();
+    }
+
     betDifference = bigBlind;
     prevBettor = currentTurn;
+
     roundDone = false;
   }
 
@@ -153,7 +159,7 @@ public:
 
   void placeMoney(int player, int betSize) {
     player %= stacks.size();
-    if(stacks[player] > betSize - bets[player]){
+    if(stacks[player] >= betSize - bets[player]){
       stacks[player] -= betSize - bets[player];
       bets[player] = betSize;
       betDifference = max(betSize - currentBet, betDifference);
@@ -180,26 +186,36 @@ public:
     handleEndAction();
   }
 
-  void Check() {
-    handleEndAction();
-  }
-
   void Fold() {
     activePlayers.erase(currentTurn);
+    for (int i = 0; i < pots.size(); i++) {
+      potEligibility[i].erase(currentTurn);
+    }
     handleEndAction();
   }
 
   bool isHandOver() {
-    return bettingRound > 3 || activePlayers.size() < 2;
+    return bettingRound > 3;
   }
 
   bool isBettingRoundOver() {
-    return roundDone || isHandOver();
+    int numNotAllIn = 0;
+    for(int i : activePlayers) {
+      if (stacks[i] > 0 && bets[i] < currentBet && !hasFolded(i)) {
+        return false;
+      }
+      if (stacks[i] > 0 && !hasFolded(i)) {
+        numNotAllIn++;
+      }
+    }
+    return roundDone || numNotAllIn < 2 || activePlayers.size() < 2;
   }
 
   void handleEndAction() {
-    currentTurn++;
-    currentTurn %= stacks.size();
+    do {
+      currentTurn = (currentTurn + 1) % stacks.size();
+    } while (hasFolded(currentTurn));
+
     if(currentTurn == prevBettor){
       roundDone = true;
     }
@@ -218,10 +234,39 @@ public:
   }
 
   void CollectPot(){
-    //transfers bets into pot
-    for(int i = 0; i < stacks.size(); i++){
-      pot += bets[i];
-      bets[i] = 0;
+    while(true) {
+      // Get the smallest bet made, so that it can be cherry picked out
+      int smallestActiveBet = -1;
+      for(int i = 0; i < stacks.size(); i++) {
+        if (potEligibility.back().count(i)) {
+          if (smallestActiveBet == -1) {
+            smallestActiveBet = bets[i];
+          } else {
+            smallestActiveBet = min(smallestActiveBet, bets[i]);
+          }
+        }
+      }
+
+      // Keep track of bets that must be in separate pots
+      set<int> stillNeedsCollection;
+
+      // Cherry pick all bets out
+      for (int i : potEligibility.back()) {
+        pots.back() += smallestActiveBet;
+        bets[i] -= smallestActiveBet;
+        if (bets[i] > 0) {
+          stillNeedsCollection.insert(i);
+        }
+      }
+
+      // If a sidepot must be made, then make it
+      // Otherwise, all bets are collected, so exit
+      if (stillNeedsCollection.size() > 0) {
+        pots.push_back(0);
+        potEligibility.push_back(stillNeedsCollection);
+      } else {
+        break;
+      }
     }
   }
 
@@ -230,11 +275,17 @@ public:
     initBettingRound();
 
     while(!isBettingRoundOver()){
-      if(!hasFolded(currentTurn)){
+      if(hasFolded(currentTurn)){
+        currentTurn = (currentTurn + 1) % stacks.size();
+          cout << prevBettor << " " << currentTurn << endl;
+      } else {
         WipeScreen();
         cout << ShowTable(false);
-        if(!isAllIn(currentTurn)){
-          char ans = '0';
+          cout << prevBettor << " " << currentTurn << endl;
+        if(isAllIn(currentTurn)){
+          Call();
+        } else {
+          char ans = '\0';
           if(canCheck(currentTurn)) {
             while(ans != 'c' && ans != 'b'){
               cout << "Check or Bet? c/b" << endl;
@@ -251,11 +302,12 @@ public:
           }
           if(ans == 'c'){
             cout << "You checked." << endl;
-            Check();
+            Call();
           } else if (ans == 'f'){
             cout << "You folded." << endl;
             Fold();
           } else if (ans == 'k'){
+            cout << "You called." << endl;
             Call();
           } else if (ans == 'r' || ans == 'b'){
             int bet = 0;
@@ -452,74 +504,104 @@ public:
     return {HighCard, FiveCards(vector<Card>(), finalHand)};
   }
 
-  vector<winnerData> getWinners() {
-    vector<winnerData> playerWinnings;
-    map<int, FinalHand> finalHands;
-
-    for(int i : activePlayers){
-      playerWinnings.push_back({i, 0});
-      finalHands[i] = GetFinalHand(i);
-      //if multiple remaining players, get their hand ranks
-    }
-
-    if (activePlayers.size() == 1) {
-      playerWinnings[0].winnings = pot;
-      return playerWinnings;
-    }
-
-    sort(playerWinnings.begin(), playerWinnings.end(),
-      [finalHands](const winnerData& a,
-         const winnerData& b)
-      {
-        if(finalHands.find(a.player)->second.handRank == finalHands.find(b.player)->second.handRank){
-          for(int i = 0; i < 7; i++){
-            int aRank = finalHands.find(a.player)->second.hand[i].GetRank();
-            int bRank = finalHands.find(b.player)->second.hand[i].GetRank();
-            if (aRank != bRank) {
-              return aRank > bRank;
-            }
-          }
-        } else {
-          return finalHands.find(a.player)->second.handRank > finalHands.find(b.player)->second.handRank;
+  bool compareFinalHands(const FinalHand& a, const FinalHand& b) {
+    if(a.handRank == b.handRank){
+      for(int i = 0; i < 7; i++){
+        int aRank = a.hand[i].GetRank();
+        int bRank = b.hand[i].GetRank();
+        if (aRank != bRank) {
+          return aRank < bRank;
         }
       }
-    );
-    //sorts playerHands from highest to lowest, equivalent to sorting by rank
+    } else {
+      return a.handRank < b.handRank;
+    }
+  }
 
-    playerWinnings[0].winnings = pot;
+  bool compareFinalHands(int a, int b) {
+    return compareFinalHands(GetFinalHand(a), GetFinalHand(b));
+  }
 
-    return playerWinnings;
+  vector<vector<winnerData>> getWinners() {
+    vector<vector<winnerData>> ret;
+    for( int i = 0; i < pots.size(); i++) {
+      vector<winnerData> playerWinnings;
+
+      for(int j : potEligibility[i]){
+        playerWinnings.push_back({j, 0});
+        //if multiple remaining players, get their hand ranks
+      }
+
+      // Sort from least to greatest
+      sort(playerWinnings.begin(), playerWinnings.end(),
+        [&](const winnerData& a,
+           const winnerData& b)
+        {
+          return compareFinalHands(b.player, a.player);
+        }
+      );
+
+      // Sorts playerHands from highest to lowest, equivalent to sorting by rank
+      int numChopping = 1;
+      for (int j = 1; j <= playerWinnings.size(); j++) {
+        if (j == playerWinnings.size() || compareFinalHands(playerWinnings[j].player, playerWinnings[j-1].player)) {
+          for(int k = j - numChopping; k < j; k++) {
+            playerWinnings[k].winnings = pots[i] / numChopping;
+          }
+          break;
+        } else {
+          numChopping++;
+        }
+      }
+
+      ret.push_back(playerWinnings);
+    }
+
+    return ret;
   }
 
   void Showdown(){
     //computes post-betting action, such as saying who won
     WipeScreen();
-    cout << ShowTable(true);
-    vector<winnerData> winners = getWinners();
-    int winner = winners[0].player;
-    stacks[winner] += pot;
-
-    cout << players[winner].name <<
-    " wins the pot of " << pot;
-    if(activePlayers.size() > 1){
-      cout << " with a " <<
-        HRtoString(GetFinalHand(winner).handRank) << ": " <<
-        Deck(GetFinalHand(winner).hand).ShowDeck() << endl;
-    } else {
-      cout << "." << endl;
-    }
-    cout << endl;
-    for(int i = 1; i < winners.size(); i++){
-      int player = winners[i].player;
-      cout << players[player].name <<
-        " has a " << HRtoString(GetFinalHand(player).handRank) << ", " <<
-        Deck(GetFinalHand(player).hand).ShowDeck() << endl;
-    }
-    if (winners.size() >= 2) {
+    cout << ShowTable(true) << endl;
+    vector<vector<winnerData>> winners = getWinners();
+    for (int i = 0; i < pots.size(); i++) {
+      bool isChopping = false;
+      if (winners[i].size() > 1 && winners[i][1].winnings > 1) {
+        isChopping = true;
+      }
+      for (const winnerData& w : winners[i]) {
+        if (w.winnings > 0) {
+          if (isChopping) {
+            cout << players[w.player].name << " chops the pot of " << pots[i] << " and wins " << w.winnings;
+          } else {
+            cout << players[w.player].name << " wins the pot of " << pots[i];
+          }
+          if(activePlayers.size() > 1) {
+            cout << " with a " <<
+              HRtoString(GetFinalHand(w.player).handRank) << ": " <<
+              Deck(GetFinalHand(w.player).hand).ShowDeck() << endl;
+          } else {
+            cout << "." << endl;
+          }
+        } else {
+          cout << players[w.player].name <<
+            " has a " << HRtoString(GetFinalHand(w.player).handRank) << ", " <<
+            Deck(GetFinalHand(w.player).hand).ShowDeck() << endl;
+        }
+      }
       cout << endl;
     }
-    cout << players[winner].name << " now has " <<
-      stacks[winner] << " chips." << endl;
+    awardWinners();
+  }
+
+  void awardWinners() {
+    vector<vector<winnerData>> winners = getWinners();
+    for (int i = 0; i < pots.size(); i++) {
+      for (const winnerData& w : winners[i]) {
+        stacks[w.player] += w.winnings;
+      }
+    }
   }
 
   void PlayHand() {
@@ -531,6 +613,9 @@ public:
 
     WipeScreen();
     for (int i = 0; i < stacks.size(); i++) {
+      if (stacks[i] == 0) {
+        continue;
+      }
       cout << "Showing " << players[i].name
         << "\'s hand. Press enter to continue." << endl;
       cin.ignore();
@@ -548,6 +633,7 @@ public:
     while(!isHandOver()){
       BettingRound();
     }
+
     Showdown();
     endHand();
   }
@@ -562,14 +648,19 @@ public:
       stacks[i] = playerStacks[i];
       if (stacks[i] > 0) {
         activePlayers.insert(i);
+        Card a = deck.GetCard();
+        Card b = deck.GetCard();
+        hands[i] = {a, b};
       }
-      Card a = deck.GetCard();
-      Card b = deck.GetCard();
-      hands[i] = {a, b};
     }
 
     // Initialize game data
-    pot = 0;
+    pots.clear();
+    pots.push_back(0);
+
+    potEligibility.clear();
+    potEligibility.push_back(activePlayers);
+
     bets.clear();
     board.clear();
     bettingRound = 0;
@@ -628,8 +719,10 @@ public:
       table += repeatString(" ", totalWidth - board.size()*3);
       table += "|\n";
     }
-    table += "Pot: " + to_string(pot) +
-      repeatString(" ", totalWidth - 5 - NumDigits(pot)) + "|\n";
+    for(int i = 0; i < pots.size(); i++) {
+      table += "Pot: " + to_string(pots[i]) +
+        repeatString(" ", totalWidth - 5 - NumDigits(pots[i])) + "|\n";
+    }
     table += divider;
     for(int i = 0; i < stacks.size(); i++){
       if(i == currentTurn){
