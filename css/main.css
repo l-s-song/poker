@@ -1,0 +1,30 @@
+html, body, h1, ul {
+  margin: 0;
+  background: black;
+}
+
+ul {
+  list-style-type: none;
+}
+
+.filters {
+  display: flex;
+}
+.filter {
+  flex-grow: 1;
+  margin: 1em 1em;
+}
+.filter-format {
+  margin-left: 0;
+  margin-right: 0;
+}
+.filter h1 {
+  background-color: #8d021f;
+  color: white;
+  text-align: center;
+  padding: 0.2em 0.5em;
+}
+.filter ul {
+  background-color: blue;
+  padding: 1em 0;
+}
