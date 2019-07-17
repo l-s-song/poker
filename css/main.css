@@ -48,3 +48,8 @@ main {
   width: 100%;
   text-align: center;
 }
+
+.tables td, table {
+  border: 1px solid white;
+  border-collapse: collapse;
+}
