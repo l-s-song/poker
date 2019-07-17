@@ -1,0 +1,27 @@
+lower rake
+auto balancing tables
+zoom (checkmark in bottom left-hand corner)
+games - NLHE, PLO, ANY
+Format - ring games, sitngo, tourny
+Blinds - high, med, low, micro
+table size - HU, 6max, 9max
+snap join (ie, join right into the table, no table selection)
+blinds $1/$2, $2/$4, $3/$6, $5/$10, $10/$20
+blinds 2/4, 5/10 10/20, 20/40, 50/$1
+higher stakes, more important table names
+better hand history
+auto login
+0x8d021f - burgandy
+0x00a86b - jade
+Don't accept ppl from Florida and Louisiana
+NY, Florida, RI, have more needs
+cant advertise in california
+washington/indiana is felony, maybe teneesee
+require lawsuits to be done in Florida
+
+long term
+*private tables
+*big cities, with graphics
+*hats
+*cool achievements based on hands, folded preflop to quads, shoved while playing the board, called with
+*graphical avatars
