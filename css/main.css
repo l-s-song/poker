@@ -1,10 +1,20 @@
-html, body, h1, ul {
+html, body, h1, ul, p {
   margin: 0;
-  background: black;
+}
+
+html {
+  background: #000;
+  color: white;
+  font-family: sans-serif;
 }
 
 ul {
   list-style-type: none;
+}
+
+main {
+  width: 80%;
+  margin: auto;
 }
 
 .filters {
@@ -20,11 +30,21 @@ ul {
 }
 .filter h1 {
   background-color: #8d021f;
-  color: white;
   text-align: center;
   padding: 0.2em 0.5em;
 }
 .filter ul {
-  background-color: blue;
+  background-color: #303030;
   padding: 1em 0;
+}
+.filter li {
+  display: flex;
+}
+.filter li p {
+  margin: auto;
+}
+
+.tables table {
+  width: 100%;
+  text-align: center;
 }

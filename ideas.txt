@@ -18,6 +18,9 @@ NY, Florida, RI, have more needs
 cant advertise in california
 washington/indiana is felony, maybe teneesee
 require lawsuits to be done in Florida
+#020202
+hsla(0,0%,100%,.2)
+hsla(0,0%,100%,.1)
 
 long term
 *private tables
