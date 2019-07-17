@@ -43,7 +43,16 @@ main {
 .filter li p {
   margin: auto;
 }
-
+.snapjoin-title {
+  display: flex;
+  font-size: 0.85em;
+}
+.snapjoin-hr {
+  flex-grow: 1;
+}
+.tables-search {
+  margin: 1em 0em;
+}
 .tables table {
   width: 100%;
   text-align: center;
