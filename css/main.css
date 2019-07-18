@@ -1,9 +1,10 @@
 html, body, h1, ul, p {
+  padding: 0;
   margin: 0;
 }
 
 html {
-  background: #171717;
+  background: #101010;
   color: white;
   font-family: sans-serif;
 }
@@ -21,6 +22,8 @@ main {
   display: flex;
 }
 .filter {
+  display: flex;
+  flex-direction: column;
   flex-grow: 1;
   margin: 1em 1em;
 }
@@ -35,12 +38,13 @@ main {
 }
 .filter ul {
   background-color: #303030;
-  padding: 1em 0;
 }
 .filter li {
   display: flex;
+  margin: 1em 1.5em;
 }
 .filter li p {
+  font-size: 1.2em;
   margin: auto;
 }
 .title {
@@ -63,6 +67,6 @@ main {
 }
 
 .tables td, table {
-  border: 1px solid white;
+  border: 1px solid #c0c0c0;
   border-collapse: collapse;
 }
