@@ -1,11 +1,28 @@
-html, body, h1, ul, p {
+html, body, h1, ul, p, button {
   padding: 0;
   margin: 0;
+  color: white;
+}
+
+.hidden {
+  display: none !important;
+}
+
+button {
+  border: none;
+  background: #8d021f;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:hover, input[type="checkbox"]:hover:not(:checked), input[type="radio"]:hover:not(:checked)  {
+  cursor: pointer;
 }
 
 html {
   background: #101010;
-  color: white;
   font-family: sans-serif;
 }
 
@@ -13,9 +30,20 @@ ul {
   list-style-type: none;
 }
 
-main {
+.center {
   width: 80%;
   margin: auto;
+  display: flex;
+}
+
+main {
+  width: 75%;
+}
+
+aside {
+  margin-left: 2em;
+  background: blue;
+  width: 25%;
 }
 
 .filters {
@@ -46,6 +74,40 @@ main {
 .filter li p {
   font-size: 1.2em;
   margin: auto;
+}
+.snapjoin-button-row {
+  display: flex;
+  margin-bottom: 1.2em;
+}
+.snapjoin-button-row:last-child {
+  margin-bottom: 0;
+}
+.snapjoin-button {
+  width: 0%;
+  flex-grow: 1;
+  margin: 0 1em;
+}
+.snapjoin-button button {
+  width: 100%;
+  background: #8d021f;
+  border: none;
+  padding: 0.3em 0;
+}
+.snapjoin-loading {
+  display: flex;
+}
+.snapjoin-loading-cell {
+  height: 5px;
+  background: red;
+  flex-grow: 1;
+  border-right: 1.3px solid black;
+  border-top: 1px solid black;
+}
+.snapjoin-loading-cell:last-child {
+  border-right: none;
+}
+.snapjoin-loading-cell.active {
+  background: green;
 }
 .title {
   display: flex;
