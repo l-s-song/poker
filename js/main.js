@@ -113,4 +113,30 @@ function getSettings() {
   };
 }
 
+function populateTable(table){
+  //type(table) = array {Game, Name, Players, Table Size, Blinds}
+  var newtable = document.createElement("TABLE");
+  let thead = newtable.createTHead();
+  let row = thead.insertRow();
+  const data = ["Game", "Name", "Players", "Table Size", "Blinds"];
+  for(let key of data){
+    let td = document.createElement("td");
+    let text = document.createTextNode(key);
+    td.appendChild(text);
+    row.appendChild(td);
+  }
+  for(let element of table){
+    let row = newtable.insertRow();
+    for(key of element){
+      let cell = row.insertCell();
+      let text = document.createTextNode(key);
+      cell.appendChild(text);
+    }
+  }
+  document.getElementById("poker-tables").innerHTML =
+    newtable.innerHTML;
+}
+
 populateRows();
+populateTable([["NLHE","Anchorage", "3", "6", "$1/$2"],
+  ["PLO", "Seattle", "5", "9", "50\u00A2/$1"]]);

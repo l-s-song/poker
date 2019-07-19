@@ -19,8 +19,8 @@ cant advertise in california
 washington/indiana is felony, maybe teneesee
 require lawsuits to be done in Florida
 #020202
-hsla(0,0%,100%,.2)
-hsla(0,0%,100%,.1)
+
+refresh table every 250ms
 
 long term
 *private tables
