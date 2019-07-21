@@ -11,7 +11,6 @@ enum Suit {
   NoSuit
 };
 
-
 class Card {
   int rank;
   Suit suit;
@@ -24,7 +23,7 @@ public:
 
   Suit GetSuit() const;
 
-  bool Equals(Card a) const;
+  bool operator==(const Card& b) const;
 
   string ShowCard();
 };

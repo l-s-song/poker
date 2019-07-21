@@ -26,12 +26,8 @@
     }
   }
 
-  bool Card::Equals(Card a) const {
-    if(rank == a.GetRank() && suit == a.GetSuit()){
-      return true;
-    } else {
-      return false;
-    }
+  bool Card::operator==(const Card& b) const {
+    return this->GetRank() == b.GetRank() && this->GetSuit() == b.GetSuit();
   }
 
   string Card::ShowCard(){

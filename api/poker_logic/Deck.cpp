@@ -17,8 +17,8 @@ void Deck::Shuffle(){
     //a = 1-52
     if(usedCards.count(a) == 0){
       cards.push_back(Card(a/4 + 2, Suit(a%4)));
+      usedCards.insert(a);
     }
-    usedCards.insert(a);
   }
 }
 

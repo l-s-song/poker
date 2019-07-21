@@ -1,3 +1,5 @@
 **/*.gch
 **/a.out
-poker_logic/poker
+**/*.lock
+api/poker_logic/poker
+api/rust_package
