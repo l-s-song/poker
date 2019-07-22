@@ -6,7 +6,7 @@
 
 using namespace std;
 
-HandSimulation::HandSimulation(int bigBlind, int buttonLocation, vector<int>& stacks){
+HandSimulation::HandSimulation(int bigBlind, int buttonLocation, const vector<int>& stacks){
   this->smallBlind = bigBlind / 2;
   this->bigBlind = bigBlind;
   this->buttonLocation = buttonLocation;
@@ -41,19 +41,39 @@ int HandSimulation::getCurrentTurn() {
   return currentTurn;
 }
 
-vector<Card>& HandSimulation::getBoard() {
+const vector<Card>& HandSimulation::getBoard() {
   return board;
 }
 
-vector<int>& HandSimulation::getStacks() {
+const vector<int>& HandSimulation::getStacks() {
   return stacks;
+}
+
+const vector<int>& HandSimulation::getBets() {
+  return bets;
+}
+
+const vector<int>& HandSimulation::getPots() {
+  return pots;
+}
+
+const set<int>& HandSimulation::getActivePlayers(){
+  return activePlayers;
+}
+
+int HandSimulation::getCurrentBet(){
+  return currentBet;
+}
+
+int HandSimulation::getMinRaise(){
+  return betDifference + currentBet;
 }
 
 int HandSimulation::getButtonLocation() {
   return buttonLocation;
 }
 
-pair<Card, Card>& HandSimulation::getHand(int player) {
+const pair<Card, Card>& HandSimulation::getHand(int player) {
   return hands[player];
 }
 

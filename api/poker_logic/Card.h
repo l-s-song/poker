@@ -25,7 +25,7 @@ public:
 
   bool operator==(const Card& b) const;
 
-  string ShowCard();
+  string ShowCard() const;
 };
 #endif
 #define CARD_H

@@ -48,7 +48,7 @@ public:
   // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River, 4 = Over
   int bettingRound;
 
-  HandSimulation(int bigBlind, int buttonLocation, vector<int>& stacks);
+  HandSimulation(int bigBlind, int buttonLocation, const vector<int>& stacks);
   bool IsValidBet(int player, int betSize);
   bool comparePlayerFinalHands(int a, int b);
   FinalHand GetFinalHand(int player);
@@ -72,11 +72,16 @@ public:
   int getCurrentTurn();
   int numPots();
   int getPot(int pot);
-  vector<Card>& getBoard();
-  vector<int>& getStacks();
+  const vector<Card>& getBoard();
+  const vector<int>& getStacks();
+  const vector<int>& getBets();
+  const vector<int>& getPots();
+  const set<int>& getActivePlayers();
+  int getCurrentBet();
+  int getMinRaise();
   int getBet(int player);
   bool mustShowdown();
-  pair<Card, Card>& getHand(int player);
+  const pair<Card, Card>& getHand(int player);
   int getButtonLocation();
   void Showdown();
   void PlayHand();
@@ -84,7 +89,7 @@ public:
   string ShowTable(bool isShowdown);
 private:
   void placeMoney(int player, int betSize);
-  void handleEndAction();
+  void advanceAction();
 };
 
 #endif

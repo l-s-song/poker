@@ -30,7 +30,7 @@
     return this->GetRank() == b.GetRank() && this->GetSuit() == b.GetSuit();
   }
 
-  string Card::ShowCard(){
+  string Card::ShowCard() const {
     //shows card, ex. Qspade
     string display;
     if(rank <= 9){
