@@ -37,10 +37,10 @@ public:
   // potElibigility[i] represents all of the players that are capable of winning
   // pots[i]
   vector<set<int>> potEligibility;
-  map<int, int> bets;
+  vector<int> bets;
   //bets made and not yet collected into pot
-  map<int, int> stacks;
-  map<int, pair<Card, Card>> hands;
+  vector<int> stacks;
+  vector<pair<Card, Card>> hands;
   //cards dealt to people
   vector<Card> board;
   bool roundDone;
@@ -48,13 +48,14 @@ public:
   // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River, 4 = Over
   int bettingRound;
 
-  HandSimulation(int smallBlind, int bigBlind, int stackSize);
+  HandSimulation(int bigBlind, int buttonLocation, vector<int>& stacks);
   bool IsValidBet(int player, int betSize);
   bool comparePlayerFinalHands(int a, int b);
   FinalHand GetFinalHand(int player);
   void initBettingRound();
   void endBettingRound();
   void Bet(int betSize);
+  void Check();
   void Call();
   void Fold();
   bool isHandOver();
@@ -65,9 +66,18 @@ public:
   void CollectPot();
   vector<vector<winnerData>> getWinners();
   void awardWinners();
-  void initHand(vector<int>& playerStacks);
   void endHand();
   void BettingRound();
+  int numPlayers();
+  int getCurrentTurn();
+  int numPots();
+  int getPot(int pot);
+  vector<Card>& getBoard();
+  vector<int>& getStacks();
+  int getBet(int player);
+  bool mustShowdown();
+  pair<Card, Card>& getHand(int player);
+  int getButtonLocation();
   void Showdown();
   void PlayHand();
   void PlayGame();

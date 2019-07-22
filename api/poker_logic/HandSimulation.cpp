@@ -6,30 +6,55 @@
 
 using namespace std;
 
-string repeatString(string s, int a){
-  //returns string that is string s repeated a times
-  string ret;
-  for(int i = 0; i < a; i++){
-    ret += s;
-  }
-  return ret;
-}
-
-void WipeScreen(){
-  //wipe terminal
-  cout << repeatString("\n", 200) << endl;
-}
-
-int NumDigits(int a){
-  //calculate number of digits of int
-  return floor(log10(max(a, 1))) + 1;
-}
-
-
-HandSimulation::HandSimulation(int smallBlind, int bigBlind, int stackSize){
-  this->smallBlind = smallBlind;
+HandSimulation::HandSimulation(int bigBlind, int buttonLocation, vector<int>& stacks){
+  this->smallBlind = bigBlind / 2;
   this->bigBlind = bigBlind;
-  this->stackSize = stackSize;
+  this->buttonLocation = buttonLocation;
+  this->stacks = stacks;
+
+  hands.resize(numPlayers());
+
+  // Deal cards and initialize player data
+  deck.Shuffle();
+  for(int i = 0; i < numPlayers(); i++) {
+    if (this->stacks[i] > 0) {
+      activePlayers.insert(i);
+      Card a = deck.GetCard();
+      Card b = deck.GetCard();
+      hands[i] = {a, b};
+    }
+  }
+
+  // Initialize game data
+  pots.push_back(0);
+  potEligibility.push_back(activePlayers);
+  bets.resize(numPlayers(), 0);
+
+  bettingRound = 0;
+}
+
+int HandSimulation::numPlayers() {
+  return stacks.size();
+}
+
+int HandSimulation::getCurrentTurn() {
+  return currentTurn;
+}
+
+vector<Card>& HandSimulation::getBoard() {
+  return board;
+}
+
+vector<int>& HandSimulation::getStacks() {
+  return stacks;
+}
+
+int HandSimulation::getButtonLocation() {
+  return buttonLocation;
+}
+
+pair<Card, Card>& HandSimulation::getHand(int player) {
+  return hands[player];
 }
 
 bool HandSimulation::IsValidBet(int player, int betSize){
@@ -58,6 +83,10 @@ FinalHand HandSimulation::GetFinalHand(int player) {
     }
   }
   return Best5Of7(finalHand);
+}
+
+int HandSimulation::getBet(int player) {
+  return bets[player];
 }
 
 void HandSimulation::initBettingRound() {
@@ -99,6 +128,10 @@ void HandSimulation::initBettingRound() {
   roundDone = false;
 }
 
+bool HandSimulation::mustShowdown() {
+  return activePlayers.size() > 1;
+}
+
 void HandSimulation::endBettingRound() {
   CollectPot();
   bettingRound++;
@@ -119,12 +152,19 @@ void HandSimulation::Bet(int betSize){
   }
   placeMoney(currentTurn, betSize);
   //handles mechanics of a bet
-  handleEndAction();
+  advanceAction();
 }
 
 void HandSimulation::Call() {
   placeMoney(currentTurn, currentBet);
-  handleEndAction();
+  advanceAction();
+}
+
+void HandSimulation::Check() {
+  if (currentBet > 0) {
+    throw "Cannot check, as currentBet is non-zero";
+  }
+  advanceAction();
 }
 
 void HandSimulation::Fold() {
@@ -132,7 +172,7 @@ void HandSimulation::Fold() {
   for (int i = 0; i < pots.size(); i++) {
     potEligibility[i].erase(currentTurn);
   }
-  handleEndAction();
+  advanceAction();
 }
 
 bool HandSimulation::isHandOver() {
@@ -152,10 +192,10 @@ bool HandSimulation::isBettingRoundOver() {
   return roundDone || numNotAllIn < 2 || activePlayers.size() < 2;
 }
 
-void HandSimulation::handleEndAction() {
+void HandSimulation::advanceAction() {
   do {
     currentTurn = (currentTurn + 1) % stacks.size();
-  } while (hasFolded(currentTurn));
+  } while (hasFolded(currentTurn) || (isAllIn(currentTurn) && currentTurn != prevBettor));
 
   if(currentTurn == prevBettor){
     roundDone = true;
@@ -215,6 +255,14 @@ void HandSimulation::CollectPot(){
   }
 }
 
+int HandSimulation::numPots() {
+  return pots.size();
+}
+
+int HandSimulation::getPot(int pot) {
+  return pots[pot];
+}
+
 vector<vector<winnerData>> HandSimulation::getWinners() {
   vector<vector<winnerData>> ret;
   for( int i = 0; i < pots.size(); i++) {
@@ -262,34 +310,6 @@ void HandSimulation::awardWinners() {
   }
 }
 
-void HandSimulation::initHand( vector<int>& playerStacks ) {
-  activePlayers.clear();
-  stacks.clear();
-
-  // Deal cards and initialize player data
-  deck.Shuffle();
-  for(int i = 0; i < playerStacks.size(); i++) {
-    stacks[i] = playerStacks[i];
-    if (stacks[i] > 0) {
-      activePlayers.insert(i);
-      Card a = deck.GetCard();
-      Card b = deck.GetCard();
-      hands[i] = {a, b};
-    }
-  }
-
-  // Initialize game data
-  pots.clear();
-  pots.push_back(0);
-
-  potEligibility.clear();
-  potEligibility.push_back(activePlayers);
-
-  bets.clear();
-  board.clear();
-  bettingRound = 0;
-}
-
 void HandSimulation::endHand() {
   int oldButtonLocation = buttonLocation;
 
@@ -299,215 +319,4 @@ void HandSimulation::endHand() {
     buttonLocation++;
     buttonLocation %= stacks.size();
   }
-}
-
-void HandSimulation::BettingRound(){
-  //handles a single round of betting. Ex. preflop is a single betting round.
-  initBettingRound();
-
-  while(!isBettingRoundOver()){
-    if(hasFolded(currentTurn)){
-      currentTurn = (currentTurn + 1) % stacks.size();
-        cout << prevBettor << " " << currentTurn << endl;
-    } else {
-      WipeScreen();
-      cout << ShowTable(false);
-        cout << prevBettor << " " << currentTurn << endl;
-      if(isAllIn(currentTurn)){
-        Call();
-      } else {
-        char ans = '\0';
-        if(canCheck(currentTurn)) {
-          while(ans != 'c' && ans != 'b'){
-            cout << "Check or Bet? c/b" << endl;
-            cin >> ans;
-          }
-        } else {
-          while(ans != 'f' && ans != 'k' && ans != 'r'){
-            cout << "Fold or Call or Raise? f/c/r" << endl;
-            cin >> ans;
-            if (ans == 'c') {
-              ans = 'k';
-            }
-          }
-        }
-        if(ans == 'c'){
-          cout << "You checked." << endl;
-          Call();
-        } else if (ans == 'f'){
-          cout << "You folded." << endl;
-          Fold();
-        } else if (ans == 'k'){
-          cout << "You called." << endl;
-          Call();
-        } else if (ans == 'r' || ans == 'b'){
-          int bet = 0;
-          cout << "How much are you betting?" << endl;
-          cin >> bet;
-          while(!IsValidBet(currentTurn, bet)){
-            cin.clear();
-            cin.ignore();
-            cout << "That is not a valid bet size." << endl;
-            cin >> bet;
-          }
-          Bet(bet);
-        }
-        cin.ignore();
-      }
-    }
-    //stops the while loop if the previous bettor is reached
-    //this is the first person to go if no one bets
-  }
-
-  endBettingRound();
-}
-
-void HandSimulation::Showdown(){
-  //computes post-betting action, such as saying who won
-  WipeScreen();
-  cout << ShowTable(true) << endl;
-  vector<vector<winnerData>> winners = getWinners();
-  for (int i = 0; i < pots.size(); i++) {
-    bool isChopping = false;
-    if (winners[i].size() > 1 && winners[i][1].winnings > 1) {
-      isChopping = true;
-    }
-    for (const winnerData& w : winners[i]) {
-      if (w.winnings > 0) {
-        if (isChopping) {
-          cout << players[w.player].name << " chops the pot of " << pots[i] << " and wins " << w.winnings;
-        } else {
-          cout << players[w.player].name << " wins the pot of " << pots[i];
-        }
-        if(activePlayers.size() > 1) {
-          cout << " with a " <<
-            HRtoString(GetFinalHand(w.player).handRank) << ": " <<
-            Deck(GetFinalHand(w.player).hand).ShowDeck() << endl;
-        } else {
-          cout << "." << endl;
-        }
-      } else {
-        cout << players[w.player].name <<
-          " has a " << HRtoString(GetFinalHand(w.player).handRank) << ", " <<
-          Deck(GetFinalHand(w.player).hand).ShowDeck() << endl;
-      }
-    }
-    cout << endl;
-  }
-  awardWinners();
-}
-
-void HandSimulation::PlayHand() {
-  vector<int> newStacks;
-  for(int i = 0; i < stacks.size(); i++) {
-    newStacks.push_back(stacks[i]);
-  }
-  initHand(newStacks);
-
-  WipeScreen();
-  for (int i = 0; i < stacks.size(); i++) {
-    if (stacks[i] == 0) {
-      continue;
-    }
-    cout << "Showing " << players[i].name
-      << "\'s hand. Press enter to continue." << endl;
-    cin.ignore();
-    WipeScreen();
-    cout << players[i].name << ", " <<
-      "your hand is " <<
-      hands[i].first.ShowCard() << " " <<
-      hands[i].second.ShowCard() << endl;
-    cout << endl;
-    cout << "Press enter to continue." << endl;
-    cin.ignore();
-    WipeScreen();
-  }
-  BettingRound();
-  while(!isHandOver()){
-    BettingRound();
-  }
-
-  Showdown();
-  endHand();
-}
-
-void HandSimulation::PlayGame(){
-  buttonLocation = (rand()) % stacks.size();
-  while(true){
-    PlayHand();
-    cout << endl << "Press enter to continue." << endl;
-    cin.ignore();
-    WipeScreen();
-  }
-  //need to update players to remove knocked out
-  //players
-}
-
-string HandSimulation::ShowTable(bool isShowdown){
-  //creates boker board graphic which displays board, pot,
-  //stacks, bets, button, and who has folded
-  int longestName = 0;
-  for(int i = 0; i < stacks.size(); i++){
-    if(players[i].name.size() > longestName){
-      longestName = players[i].name.size();
-    }
-  }
-  int maxDigits = 0;
-  for(int i = 0; i < stacks.size(); i++){
-    int numDigits = NumDigits(stacks[i]);
-    if(numDigits > maxDigits){
-      maxDigits = numDigits;
-    }
-  }
-  int totalWidth = 19 + longestName + maxDigits;
-
-  string divider = "";
-  for(int i = 0; i < totalWidth; i++){
-    divider += "=";
-  }
-  divider += "|\n";
-
-  string table = divider;
-  if(board.size() > 0){
-    table += Deck(board).ShowDeck();
-    table += repeatString(" ", totalWidth - board.size()*3);
-    table += "|\n";
-  }
-  for(int i = 0; i < pots.size(); i++) {
-    table += "Pot: " + to_string(pots[i]) +
-      repeatString(" ", totalWidth - 5 - NumDigits(pots[i])) + "|\n";
-  }
-  table += divider;
-  for(int i = 0; i < stacks.size(); i++){
-    if(i == currentTurn){
-      table += "> ";
-    } else {
-      table += "  ";
-    }
-    table += players[i].name + repeatString(" ",
-      2 + longestName - players[i].name.size());
-    table += to_string(stacks[i]) + repeatString(" ",
-      maxDigits + 1 - NumDigits(stacks[i]));
-    if(i == buttonLocation){
-      table += "[B] ";
-    } else {
-      table += "    ";
-    }
-    if(activePlayers.count(i) == 1 && isShowdown){
-      if (activePlayers.size() > 1) {
-        table += "[ " + hands[i].first.ShowCard() + " " +
-          hands[i].second.ShowCard() + " ] ";
-      } else {
-        table += "Mucked    ";
-      }
-    } else if (activePlayers.count(i) == 1){
-      table += to_string(bets[i]) + repeatString(" ",
-      10 - NumDigits(bets[i]));
-    } else {
-      table += "Folded" + repeatString(" ", 4);
-    }
-    table += "|\n";
-  }
-  table += divider;
-  return table;
 }
