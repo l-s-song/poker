@@ -2,6 +2,9 @@
 #include "Deck.h"
 #include "HandLogic.h"
 
+#include <map>
+#include <set>
+
 class Player {
 public:
   int id;

@@ -10,27 +10,10 @@
 #include "Card.h"
 #include "Deck.h"
 #include "HandLogic.h"
+#include "HandSimulation.h"
 
 using namespace std;
 
-string repeatString(string s, int a){
-  //returns string that is string s repeated a times
-  string ret;
-  for(int i = 0; i < a; i++){
-    ret += s;
-  }
-  return ret;
-}
-
-void WipeScreen(){
-  //wipe terminal
-  cout << repeatString("\n", 200) << endl;
-}
-
-int NumDigits(int a){
-  //calculate number of digits of int
-  return floor(log10(max(a, 1))) + 1;
-}
 
 
 int main() {
