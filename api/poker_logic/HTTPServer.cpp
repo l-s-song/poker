@@ -40,5 +40,33 @@ int main(){
               << table_json;
   };
 
+  server.resource["^/api/queue$"]["POST"] = [](
+    shared_ptr<HttpServer::Response> response,
+    shared_ptr<HttpServer::Request> request
+  ) {
+    try {
+      ptree pt;
+      read_json(request->content, pt);
+      string type = pt.get<string>("type");
+      string format = pt.get<string>("format");
+      int table_size = pt.get<int>("table_size");
+      int buy_in_or_big_blind;
+      if (pt.count("buy_in") > 0){
+        buy_in_or_big_blind = pt.get<int>("buy_in");
+      } else {
+        buy_in_or_big_blind = pt.get<int>("big_blind");
+      }
+      string content = add_to_queue(type, format, table_size, buy_in_or_big_blind);
+
+      *response << "HTTP/1.1 200 OK\r\n"
+                << "Content-Length: " << content.length() << "\r\n\r\n"
+                << content;
+    }
+    catch(const exception &e) {
+      *response << "HTTP/1.1 400 Bad Request\r\nContent-Length: " << strlen(e.what()) << "\r\n\r\n"
+                << e.what();
+    }
+  }
+
   server.start();
 }

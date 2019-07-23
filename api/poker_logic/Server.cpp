@@ -17,6 +17,16 @@ string to_string(game_type type){
   }
 }
 
+game_type to_game_type(string s){
+  if(s == "nlhe"){
+    return nlhe;
+  } else if(s == "plo") {
+    return plo;
+  } else {
+    throw "nonexisting game type";
+  }
+}
+
 enum game_format {
   ring,
   sitngo,
@@ -32,6 +42,18 @@ string to_string(game_format format){
     return "tournament";
   } else {
     throw "Impossible";
+  }
+}
+
+game_format to_game_format(string s){
+  if(s == "ring"){
+    return ring;
+  } else if(s == "sitngo"){
+    return sitngo;
+  } else if (s == "tournament"){
+    return tournament;
+  } else {
+    throw "nonexistent game format";
   }
 }
 
@@ -160,6 +182,8 @@ map<string, shared_mutex*> game_mutexes;
 map<string, shared_mutex*> table_mutexes;
 shared_mutex all_games_mutex;
 shared_mutex all_tables_mutex;
+typedef tuple<game_type, game_format, int, int> queue_settings;
+map<tuple<game_type, game_format, int, int>, vector<string>> queue;
 
 void init_server() {
   HandSimulation hs(2, 0, vector<int>(6, 200));
@@ -182,6 +206,20 @@ void init_server() {
     {"5"}
   };
   game_mutexes["1234"] = new shared_mutex;
+}
+
+string add_to_queue(string type, string format, int table_size, int buy_in_or_big_blind) {
+  queue_settings input = {to_game_type(type), to_game_format(format), table_size, buy_in_or_big_blind};
+  if (queue.contains(input) ){
+    vector<string>& array = queue[input];
+    if(array.size() == table_size - 1){
+
+    } else {
+      
+    }
+  } else{
+
+  }
 }
 
 string get_game_from_id(string game_id) {
