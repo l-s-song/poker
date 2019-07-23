@@ -1,11 +1,27 @@
 CXX = g++
-CXXFLAGS = -fmax-errors=1 -g -std=c++11 -pthread
+CXXFLAGS = -fmax-errors=1 -g -std=c++11
 
-build-debug:
-	$(CXX) $(CXXFLAGS) Card.h Deck.h HandLogic.h HandSimulation.h Card.cpp Deck.cpp HandLogic.cpp HandSimulation.cpp PokerTerminal.cpp -o poker
+Card.o: Card.h
 
-server:
-	$(CXX) $(CXXFLAGS) Card.h Deck.h HandLogic.h HandSimulation.h Card.cpp Deck.cpp HandLogic.cpp HandSimulation.cpp poker_server.cpp -o poker -lboost_system
+Deck.o: Deck.h Card.h
+
+HandLogic.o: HandLogic.h Deck.h Card.h
+
+HandSimulation.o: HandSimulation.h HandLogic.h Deck.h Card.h
+
+PokerTerminal.o: HandSimulation.h HandLogic.h Deck.h Card.h
+
+Server.h.gch: Server.h HandSimulation.h HandLogic.h Deck.h Card.h
+	$(CXX) $(CXXFLAGS) -o Server.h.gch Server.h
+
+Server.o: Server.cpp Server.h.gch
+	$(CXX) $(CXXFLAGS) -c Server.cpp
+
+build-debug: HandSimulation.h HandLogic.h Deck.h Card.h
+	$(CXX) $(CXXFLAGS) -c PokerTerminal.cpp
+
+server: Server.o HandSimulation.o HandLogic.o Deck.o Card.o
+	$(CXX) $(CXXFLAGS) -pthread -o Server Server.o HandSimulation.o HandLogic.o Deck.o Card.o -lboost_system
 
 
 debug: build-debug

@@ -49,7 +49,7 @@ string ShowTable(HandSimulation& hs, bool isShowdown){
   divider += "|\n";
 
   string table = divider;
-  vector<Card>& board = hs.getBoard();
+  const vector<Card>& board = hs.getBoard();
   if(board.size() > 0){
     table += Deck(board).ShowDeck();
     table += repeatString(" ", totalWidth - board.size()*3);

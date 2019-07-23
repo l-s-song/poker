@@ -122,6 +122,9 @@ void HandSimulation::initBettingRound() {
     board.push_back(deck.GetCard());
   }
 
+  betDifference = bigBlind;
+  currentBet = 0;
+
   if (bettingRound == 0) {
     if(stacks.size() == 2){
       placeMoney(buttonLocation, smallBlind);
@@ -134,16 +137,14 @@ void HandSimulation::initBettingRound() {
     }
     currentBet = bigBlind;
   } else {
-    currentBet = 0;
     currentTurn = (buttonLocation + 1) % stacks.size();
   }
+
+  prevBettor = currentTurn;
 
   while(hasFolded(currentTurn)) {
     currentTurn = (currentTurn + 1) % stacks.size();
   }
-
-  betDifference = bigBlind;
-  prevBettor = currentTurn;
 
   roundDone = false;
 }
