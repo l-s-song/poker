@@ -130,24 +130,24 @@ void HandSimulation::initBettingRound() {
   currentBet = 0;
 
   if (bettingRound == 0) {
-    if(stacks.size() == 2){
+    if(numPlayers() == 2){
       placeMoney(buttonLocation, smallBlind);
       placeMoney(buttonLocation + 1, bigBlind);
       currentTurn = buttonLocation;
     } else {
       placeMoney(buttonLocation + 1, smallBlind);
       placeMoney(buttonLocation + 2, bigBlind);
-      currentTurn = (buttonLocation + 3) % stacks.size();
+      currentTurn = (buttonLocation + 3) % numPlayers();
     }
     currentBet = bigBlind;
   } else {
-    currentTurn = (buttonLocation + 1) % stacks.size();
+    currentTurn = (buttonLocation + 1) % numPlayers();
   }
 
   prevBettor = currentTurn;
 
   while(hasFolded(currentTurn)) {
-    currentTurn = (currentTurn + 1) % stacks.size();
+    currentTurn = (currentTurn + 1) % numPlayers();
   }
 
   roundDone = false;
@@ -163,7 +163,7 @@ void HandSimulation::endBettingRound() {
 }
 
 void HandSimulation::placeMoney(int player, int betSize) {
-  player %= stacks.size();
+  player %= numPlayers();
   int betAmount = min(stacks[player], betSize - bets[player]);
   stacks[player] -= betAmount;
   bets[player] += betAmount;
@@ -219,7 +219,7 @@ bool HandSimulation::isBettingRoundOver() {
 
 void HandSimulation::advanceAction() {
   do {
-    currentTurn = (currentTurn + 1) % stacks.size();
+    currentTurn = (currentTurn + 1) % numPlayers();
   } while (hasFolded(currentTurn) || (isAllIn(currentTurn) && currentTurn != prevBettor));
 
   if(currentTurn == prevBettor){
@@ -243,13 +243,11 @@ void HandSimulation::CollectPot(){
   while(true) {
     // Get the smallest bet made, so that it can be cherry picked out
     int smallestActiveBet = -1;
-    for(int i = 0; i < stacks.size(); i++) {
-      if (potEligibility.back().count(i)) {
-        if (smallestActiveBet == -1) {
-          smallestActiveBet = bets[i];
-        } else {
-          smallestActiveBet = min(smallestActiveBet, bets[i]);
-        }
+    for(int i : potEligibility.back()) {
+      if (smallestActiveBet == -1) {
+        smallestActiveBet = bets[i];
+      } else {
+        smallestActiveBet = min(smallestActiveBet, bets[i]);
       }
     }
 
@@ -261,9 +259,10 @@ void HandSimulation::CollectPot(){
     // $5, $10, $10
     //
     // Cherry pick all bets out
-    for (int i : potEligibility.back()) {
-      pots.back() += smallestActiveBet;
-      bets[i] -= smallestActiveBet;
+    for (int i = 0; i < numPlayers(); i++) {
+      int cherryPickAmount = min(smallestActiveBet, bets[i]);
+      pots.back() += cherryPickAmount;
+      bets[i] -= cherryPickAmount;
       if (bets[i] > 0) {
         stillNeedsCollection.insert(i);
       }
@@ -339,9 +338,9 @@ void HandSimulation::endHand() {
   int oldButtonLocation = buttonLocation;
 
   buttonLocation++;
-  buttonLocation %= stacks.size();
+  buttonLocation %= numPlayers();
   while(stacks[buttonLocation] == 0 && buttonLocation != oldButtonLocation){
     buttonLocation++;
-    buttonLocation %= stacks.size();
+    buttonLocation %= numPlayers();
   }
 }

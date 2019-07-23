@@ -49,13 +49,13 @@
       }
     }
     if(suit == Hearts){
-      display += "\u2665";
+      display += "h"; // "u2665"
     } else if (suit == Spades){
-      display += "\u2660";
+      display += "s"; // "u2660";
     } else if (suit == Diamonds){
-      display += "\u25C6";
+      display += "d"; // "u25C6";
     } else if (suit == Clubs){
-      display += "\u2663";
+      display += "c"; // "u2663";
     }
     return display;
   }

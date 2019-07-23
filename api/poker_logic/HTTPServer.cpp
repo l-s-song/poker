@@ -54,16 +54,31 @@ int main(){
     shared_ptr<HttpServer::Response> response,
     shared_ptr<HttpServer::Request> request
   ) {
-    string session_id = "1234";
+    string session_id = get_session_id(request);
+    if (session_id == "") {
+      session_id = generate_id();
+    }
     string player_id = request->path_match[1].str();
     set_player_id(session_id, player_id);
-    string content = "";
+    string content = "{}";
 
     *response << "HTTP/1.1 200 OK\r\n"
               << "Set-Cookie: " << "session_id=" << session_id << "; path=/" << "\r\n"
               << "Content-Length: " << content.size() << "\r\n"
               << "\r\n"
               << content;
+  };
+
+  server.resource["^/api/games$"]["GET"] = [](
+    shared_ptr<HttpServer::Response> response,
+    shared_ptr<HttpServer::Request> request
+  ) {
+    string games_json = get_games();
+
+    *response << "HTTP/1.1 200 OK\r\n"
+              << "Content-Length: " << games_json.size() << "\r\n"
+              << "\r\n"
+              << games_json;
   };
 
   server.resource["^/api/game/([0-9]+)$"]["GET"] = [](

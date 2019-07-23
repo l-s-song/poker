@@ -19,35 +19,6 @@ public:
 
 class HandSimulation {
 public:
-  vector<Player> players;
-  int smallBlind;
-  int bigBlind;
-  int stackSize;
-  //multiples of bigblind to compute  starting stack
-  int buttonLocation;
-  Deck deck;
-  int currentTurn;
-  int currentBet;
-  int betDifference;
-  // Players still active in betting round
-  set<int> activePlayers;
-  // All pots, pots.back() is the pot that's currently being bet into
-  // The rest are for players who are already all-in
-  vector<int> pots;
-  // potElibigility[i] represents all of the players that are capable of winning
-  // pots[i]
-  vector<set<int>> potEligibility;
-  vector<int> bets;
-  //bets made and not yet collected into pot
-  vector<int> stacks;
-  vector<pair<Card, Card>> hands;
-  //cards dealt to people
-  vector<Card> board;
-  bool roundDone;
-  int prevBettor;
-  // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River, 4 = Over
-  int bettingRound;
-
   HandSimulation(int bigBlind, int buttonLocation, const vector<int>& stacks);
   bool isValidBet(int player, int betSize);
   bool isValidBet(int betSize);
@@ -89,6 +60,34 @@ public:
   void PlayGame();
   string ShowTable(bool isShowdown);
 private:
+  int smallBlind;
+  int bigBlind;
+  int stackSize;
+  //multiples of bigblind to compute  starting stack
+  int buttonLocation;
+  Deck deck;
+  int currentTurn;
+  int currentBet;
+  int betDifference;
+  // Players still active in betting round
+  set<int> activePlayers;
+  // All pots, pots.back() is the pot that's currently being bet into
+  // The rest are for players who are already all-in
+  vector<int> pots;
+  // potElibigility[i] represents all of the players that are capable of winning
+  // pots[i]
+  vector<set<int>> potEligibility;
+  vector<int> bets;
+  //bets made and not yet collected into pot
+  vector<int> stacks;
+  vector<pair<Card, Card>> hands;
+  //cards dealt to people
+  vector<Card> board;
+  bool roundDone;
+  int prevBettor;
+  // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River, 4 = Over
+  int bettingRound;
+  
   void placeMoney(int player, int betSize);
   void advanceAction();
 };
