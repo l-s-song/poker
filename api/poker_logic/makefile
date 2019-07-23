@@ -11,17 +11,19 @@ HandSimulation.o: HandSimulation.h HandLogic.h Deck.h Card.h
 
 PokerTerminal.o: HandSimulation.h HandLogic.h Deck.h Card.h
 
-Server.h.gch: Server.h HandSimulation.h HandLogic.h Deck.h Card.h
-	$(CXX) $(CXXFLAGS) -o Server.h.gch Server.h
+Server.o: Server.h HandSimulation.h HandLogic.h Deck.h Card.h
 
-Server.o: Server.cpp Server.h.gch
-	$(CXX) $(CXXFLAGS) -c Server.cpp
+HTTPServer.h.gch: HTTPServer.h
+	$(CXX) $(CXXFLAGS) -o HTTPServer.h.gch HTTPServer.h
+
+HTTPServer.o: HTTPServer.cpp HTTPServer.h.gch
+	$(CXX) $(CXXFLAGS) -c HTTPServer.cpp
 
 build-debug: HandSimulation.h HandLogic.h Deck.h Card.h
 	$(CXX) $(CXXFLAGS) -c PokerTerminal.cpp
 
-server: Server.o HandSimulation.o HandLogic.o Deck.o Card.o
-	$(CXX) $(CXXFLAGS) -pthread -o Server Server.o HandSimulation.o HandLogic.o Deck.o Card.o -lboost_system
+server: HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o
+	$(CXX) $(CXXFLAGS) -pthread -o Server HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o -lboost_system
 
 
 debug: build-debug
