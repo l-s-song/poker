@@ -1,11 +1,5 @@
 #include "Server.h"
-
-using namespace std;
-
-using namespace boost::property_tree;
-
-using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
-using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
+#include "HandSimulation.h"
 
 enum game_type {
   nlhe,
@@ -95,11 +89,7 @@ map<string, mutex*> table_mutexes;
 mutex all_games_mutex;
 mutex all_tables_mutex;
 
-int main(){
-  cout << "HI2" << endl;
-  HttpServer server;
-  server.config.port = 8080;
-
+void initServer() {
   HandSimulation hs(2, 0, vector<int>(6, 200));
   hs.initBettingRound();
   all_tables["5"] = new Table {
@@ -109,36 +99,24 @@ int main(){
     hs
   };
   table_mutexes["5"] = new mutex;
-
-  server.resource["^/api/queue$"]["POST"] = [](
-    shared_ptr<HttpServer::Response> response,
-    shared_ptr<HttpServer::Request> request
-  ) {
-  //implement table queues
-};
-  //return table info
-  server.resource["^/api/table/([0-9]+)$"]["GET" ] = [](
-    shared_ptr<HttpServer::Response> response,
-    shared_ptr<HttpServer::Request> request
-  ) {
-    string table_id = request->path_match[1].str();
-    string res;
-    all_tables_mutex.lock();
-    if(all_tables.count(table_id)){
-      table_mutexes[table_id]->lock();
-      Table& thetable = *all_tables[table_id];
-      res = thetable.output_table();
-      table_mutexes[table_id]->unlock();
-    } else {
-      res = "{\n";
-      res += "\t\"error\": \"Table ID Not Found\"\n";
-      res += "}\n";
-    }
-
-    *response << "HTTP/1.1 200 OK\r\n"
-              << "Content-Length: " << res.size() << "\r\n\r\n"
-              << res;
-    all_tables_mutex.unlock();
-  };
-  server.start();
 }
+
+string get_table_from_id(
+  string table_id
+) {
+  string content;
+  all_tables_mutex.lock();
+  if(all_tables.count(table_id)){
+    table_mutexes[table_id]->lock();
+    Table& thetable = *all_tables[table_id];
+    content = thetable.output_table();
+    table_mutexes[table_id]->unlock();
+  } else {
+    content = "{\n";
+    content += "\t\"error\": \"Table ID Not Found\"\n";
+    content += "}\n";
+  }
+  all_tables_mutex.unlock();
+
+  return content;
+};
