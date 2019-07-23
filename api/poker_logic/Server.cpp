@@ -1,129 +1,9 @@
 #include "HandSimulation.h"
 #include "Server.h"
+#include "JSON.h"
 
 #include <shared_mutex>
 #include <iostream>
-
-enum game_type {
-  nlhe,
-  plo
-};
-
-string to_string(game_type type){
-  if(type == nlhe){
-    return "nlhe";
-  } else {
-    return "plo";
-  }
-}
-
-game_type to_game_type(string s){
-  if(s == "nlhe"){
-    return nlhe;
-  } else if(s == "plo") {
-    return plo;
-  } else {
-    throw "nonexisting game type";
-  }
-}
-
-enum game_format {
-  ring,
-  sitngo,
-  tournament
-};
-
-string to_string(game_format format){
-  if(format == ring){
-    return "ring";
-  } else if (format == sitngo){
-    return "sitngo";
-  } else if (format == tournament){
-    return "tournament";
-  } else {
-    throw "Impossible";
-  }
-}
-
-game_format to_game_format(string s){
-  if(s == "ring"){
-    return ring;
-  } else if(s == "sitngo"){
-    return sitngo;
-  } else if (s == "tournament"){
-    return tournament;
-  } else {
-    throw "nonexistent game format";
-  }
-}
-
-string to_string(const vector<int>& array) {
-  //no trailing comma
-  string s = "";
-  s += "[";
-  if(array.size() > 0){
-    for(int i = 0; i < array.size() - 1; i++){
-      s += to_string(array[i]) + ", ";
-    }
-    s += to_string(array[array.size() - 1]);
-  }
-  s += "]";
-  return s;
-}
-
-string to_string(const vector<string>& array) {
-  string s = "";
-  s += "[";
-  if(array.size() > 0){
-    for(int i = 0; i < array.size() - 1; i++){
-      s += "\"" + array[i] + "\", ";
-    }
-    s += "\"" + array[array.size() - 1] + "\"";
-  }
-  s += "]";
-  return s;
-}
-
-string format_json_raw(string key, string value, int numtab, bool hascomma){
-  string s = "";
-  for(int i = 0; i < numtab; i++){
-    s += "\t";
-  }
-  s += "\"" + key + "\": " + value;
-  if(hascomma){
-    s += ",";
-  }
-  s += "\n";
-  return s;
-}
-
-string format_json(string key, int value, int numtab, bool hascomma = true){
-  return format_json_raw(key, to_string(value), numtab, hascomma);
-}
-
-string format_json(string key, string value, int numtab, bool hascomma = true){
-  return format_json_raw(key, "\"" + value + "\"", numtab, hascomma);
-}
-
-string format_json(string key, const vector<int>& value, int numtab, bool hascomma = true){
-  return format_json_raw(key, to_string(value), numtab, hascomma);
-}
-
-string format_json(string key, const vector<string>& value, int numtab, bool hascomma = true){
-  return format_json_raw(key, to_string(value), numtab, hascomma);
-}
-
-string format_json(string key, const set<int>& value, int numtab, bool hascomma = true){
-  return format_json(key, vector<int>(value.begin(), value.end()), numtab, hascomma);
-}
-
-string format_json(string key, const vector<Card>& value, int numtab, bool hascomma = true){
-  vector<string> string_value(value.size());
-  for(int i = 0; i < value.size(); i++){
-    string_value[i] = value[i].ShowCard();
-  }
-  return format_json(key, string_value, numtab, hascomma);
-}
 
 struct Game {
   string id;
@@ -204,7 +84,18 @@ void set_player_id(string session_id, string player_id) {
   session_id_to_player_id_mutex.unlock();
 }
 
+mutex rand_mutex;
+
+int gen_rand() {
+  int ret;
+  rand_mutex.lock();
+  ret = rand();
+  rand_mutex.unlock();
+  return ret;
+}
+
 void init_server() {
+  srand(time(NULL));
   HandSimulation hs(2, 0, vector<int>(6, 200));
   hs.initBettingRound();
   all_tables["5"] = new Table {
@@ -225,29 +116,93 @@ void init_server() {
     {"5"}
   };
   game_mutexes["1234"] = new shared_mutex;
+  queue_settings qs = make_tuple(nlhe, ring, 6, 2);
+  queue[qs];
+}
+
+
+string player_act(string session_id, string table_id, string action, int bet_size) {
+  string player_id = get_player_id(session_id);
+  if (player_id == "") {
+    return error_json("Player not logged in");
+  }
+  string ret;
+  all_tables_mutex.lock_shared();
+  if (all_tables.count(table_id)) {
+    table_mutexes[table_id]->lock();
+    vector<string>& player_ids = all_tables[table_id]->player_ids;
+    HandSimulation& hs = all_tables[table_id]->hand_sim;
+    if (player_ids[hs.getCurrentTurn()] == player_id) {
+      if (action == "raise") {
+
+      } else if (action == "bet") {
+
+      } else if (action == "call") {
+
+      } else if (action == "check") {
+
+      } else if (action == "fold") {
+
+      } else {
+        ret = error_json(action + " is not a valid action");
+      }
+    } else {
+      ret = error_json("It is not your turn");
+    }
+    table_mutexes[table_id]->unlock();
+  }
+  all_tables_mutex.unlock_shared();
+  return ret;
 }
 
 string add_to_queue(string session_id, string type, string format, int table_size, int buy_in_or_big_blind) {
   string player_id = get_player_id(session_id);
   if (player_id == "") {
-    return string("")
-          + "{\n"
-          + "\t\"error\": \"Player not logged in\""
-          + "}\n";
+    return error_json("Player not logged in");
   }
+  string invalid_settings = error_json("A queue with those settings does not exist");
+  if (!is_game_type(type) || !is_game_format(format)) {
+    return invalid_settings;
+  }
+
+  string ret = "{}";
   queue_settings input = {to_game_type(type), to_game_format(format), table_size, buy_in_or_big_blind};
   queue_mutex.lock();
-  if (queue.count(input) ){
-    vector<string>& array = queue[input];
-    if(array.size() == table_size - 1){
+  if (queue.count(input)) {
+    vector<string>& player_ids = queue[input];
+    player_ids.push_back(player_id);
+    if(player_ids.size() == table_size){
+      //make new game
+      string table_id = to_string(gen_rand());
+      string game_id = to_string(gen_rand());
+      HandSimulation hs(buy_in_or_big_blind, 0, vector<int>(table_size, 100*buy_in_or_big_blind));
+      hs.initBettingRound();
+      Table* table = new Table{table_id, game_id, player_ids, hs};
+      Game* game = new Game {
+        game_id, get<0>(input), get<1>(input), get<2>(input), -1, get<3>(input), -1, {table_id}
+      };
 
-    } else {
-      array.push_back(player_id);
+      all_games_mutex.lock();
+      all_games[game_id] = game;
+      game_mutexes[game_id] = new shared_mutex;
+      all_games_mutex.unlock();
+
+      all_tables_mutex.lock();
+      all_tables[table_id] = table;
+      table_mutexes[table_id] = new shared_mutex;
+      all_tables_mutex.unlock();
+
+      ret =   "{\n"
+            + format_json("game_id", game_id, 1, false)
+            + "}\n";
+
+      player_ids.clear();
     }
   } else {
-
+    ret = invalid_settings;
   }
   queue_mutex.unlock();
+  return ret;
 }
 
 string get_game_from_id(string game_id) {
@@ -259,9 +214,7 @@ string get_game_from_id(string game_id) {
     response = game.to_json();
     game_mutexes[game_id]->unlock_shared();
   } else {
-    response = "{\n";
-    response += format_json("error", "Game ID Not Found", 1, false);
-    response += "}\n";
+    response = error_json("Game ID Not Found");
   }
   all_games_mutex.unlock_shared();
 
@@ -277,9 +230,7 @@ string get_table_from_id(string table_id) {
     response = thetable.to_json();
     table_mutexes[table_id]->unlock_shared();
   } else {
-    response = "{\n";
-    response += format_json("error", "Table ID Not Found", 1, false);
-    response += "}\n";
+    response = error_json("Table ID Not Found");
   }
   all_tables_mutex.unlock_shared();
 
