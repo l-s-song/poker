@@ -180,10 +180,29 @@ map<string, Game*> all_games;
 map<string, Table*> all_tables;
 map<string, shared_mutex*> game_mutexes;
 map<string, shared_mutex*> table_mutexes;
+map<string, string> session_id_to_player_id;
 shared_mutex all_games_mutex;
 shared_mutex all_tables_mutex;
+shared_mutex session_id_to_player_id_mutex;
+mutex queue_mutex;
 typedef tuple<game_type, game_format, int, int> queue_settings;
-map<tuple<game_type, game_format, int, int>, vector<string>> queue;
+map<queue_settings, vector<string>> queue;
+
+string get_player_id(string session_id) {
+  session_id_to_player_id_mutex.lock_shared();
+  string player_id = "";
+  if (session_id_to_player_id.count(session_id)) {
+    player_id = session_id_to_player_id[session_id];
+  }
+  session_id_to_player_id_mutex.unlock_shared();
+  return player_id;
+}
+
+void set_player_id(string session_id, string player_id) {
+  session_id_to_player_id_mutex.lock();
+  session_id_to_player_id[session_id] = player_id;
+  session_id_to_player_id_mutex.unlock();
+}
 
 void init_server() {
   HandSimulation hs(2, 0, vector<int>(6, 200));
@@ -208,18 +227,27 @@ void init_server() {
   game_mutexes["1234"] = new shared_mutex;
 }
 
-string add_to_queue(string type, string format, int table_size, int buy_in_or_big_blind) {
+string add_to_queue(string session_id, string type, string format, int table_size, int buy_in_or_big_blind) {
+  string player_id = get_player_id(session_id);
+  if (player_id == "") {
+    return string("")
+          + "{\n"
+          + "\t\"error\": \"Player not logged in\""
+          + "}\n";
+  }
   queue_settings input = {to_game_type(type), to_game_format(format), table_size, buy_in_or_big_blind};
-  if (queue.contains(input) ){
+  queue_mutex.lock();
+  if (queue.count(input) ){
     vector<string>& array = queue[input];
     if(array.size() == table_size - 1){
 
     } else {
-      
+      array.push_back(player_id);
     }
-  } else{
+  } else {
 
   }
+  queue_mutex.unlock();
 }
 
 string get_game_from_id(string game_id) {
@@ -240,9 +268,7 @@ string get_game_from_id(string game_id) {
   return response;
 };
 
-string get_table_from_id(
-  string table_id
-) {
+string get_table_from_id(string table_id) {
   string response;
   all_tables_mutex.lock_shared();
   if(all_tables.count(table_id)){
