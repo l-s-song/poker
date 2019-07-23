@@ -10,13 +10,13 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 
 int main(){
-  cout << "HI2" << endl;
+  cout << "Server Starting" << endl;
   HttpServer server;
   server.config.port = 8080;
 
-  initServer();
+  init_server();
 
-  server.resource["^/api/game/([0-9]+)$"]["GET" ] = [](
+  server.resource["^/api/game/([0-9]+)$"]["GET"] = [](
     shared_ptr<HttpServer::Response> response,
     shared_ptr<HttpServer::Request> request
   ) {
@@ -28,7 +28,7 @@ int main(){
               << game_json;
   };
 
-  server.resource["^/api/table/([0-9]+)$"]["GET" ] = [](
+  server.resource["^/api/table/([0-9]+)$"]["GET"] = [](
     shared_ptr<HttpServer::Response> response,
     shared_ptr<HttpServer::Request> request
   ) {

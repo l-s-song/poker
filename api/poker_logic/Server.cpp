@@ -1,12 +1,15 @@
-#include "Server.h"
 #include "HandSimulation.h"
+#include "Server.h"
+
+#include <shared_mutex>
+#include <iostream>
 
 enum game_type {
   nlhe,
   plo
 };
 
-string game_type_toString(game_type type){
+string to_string(game_type type){
   if(type == nlhe){
     return "nlhe";
   } else {
@@ -20,17 +23,19 @@ enum game_format {
   tournament
 };
 
-string game_format_toString(game_format format){
+string to_string(game_format format){
   if(format == ring){
     return "ring";
   } else if (format == sitngo){
     return "sitngo";
   } else if (format == tournament){
     return "tournament";
+  } else {
+    throw "Impossible";
   }
 }
 
-string json_intarray(const vector<int>& array) {
+string to_string(const vector<int>& array) {
   //no trailing comma
   string s = "";
   s += "[";
@@ -44,7 +49,7 @@ string json_intarray(const vector<int>& array) {
   return s;
 }
 
-string json_stringarray(const vector<string>& array) {
+string to_string(const vector<string>& array) {
   string s = "";
   s += "[";
   if(array.size() > 0){
@@ -57,20 +62,7 @@ string json_stringarray(const vector<string>& array) {
   return s;
 }
 
-string intvalue(string key, int value, int numtab, bool hascomma){
-  string s = "";
-  for(int i = 0; i < numtab; i++){
-    s += "\t";
-  }
-  s += "\"" + key + "\": " + to_string(value);
-  if(hascomma){
-    s += ",";
-  }
-  s += "\n";
-}
-
-string stringvalue(string key, string value, int numtab, bool hascomma){
-  value = "\"" + value + "\"";
+string format_json_raw(string key, string value, int numtab, bool hascomma){
   string s = "";
   for(int i = 0; i < numtab; i++){
     s += "\t";
@@ -80,6 +72,35 @@ string stringvalue(string key, string value, int numtab, bool hascomma){
     s += ",";
   }
   s += "\n";
+  return s;
+}
+
+string format_json(string key, int value, int numtab, bool hascomma = true){
+  return format_json_raw(key, to_string(value), numtab, hascomma);
+}
+
+string format_json(string key, string value, int numtab, bool hascomma = true){
+  return format_json_raw(key, "\"" + value + "\"", numtab, hascomma);
+}
+
+string format_json(string key, const vector<int>& value, int numtab, bool hascomma = true){
+  return format_json_raw(key, to_string(value), numtab, hascomma);
+}
+
+string format_json(string key, const vector<string>& value, int numtab, bool hascomma = true){
+  return format_json_raw(key, to_string(value), numtab, hascomma);
+}
+
+string format_json(string key, const set<int>& value, int numtab, bool hascomma = true){
+  return format_json(key, vector<int>(value.begin(), value.end()), numtab, hascomma);
+}
+
+string format_json(string key, const vector<Card>& value, int numtab, bool hascomma = true){
+  vector<string> string_value(value.size());
+  for(int i = 0; i < value.size(); i++){
+    string_value[i] = value[i].ShowCard();
+  }
+  return format_json(key, string_value, numtab, hascomma);
 }
 
 struct Game {
@@ -92,19 +113,21 @@ struct Game {
   int blind_timer;
   vector<string> tables;
 
-  string output_game(){
+  string to_json() {
     string s = "{\n";
-    s += stringvalue("d", id, 1, true);
-    s += stringvalue("type", game_type_toString(type), 1, true);
-    s += stringvalue("format", game_format_toString(format), 1, true);
-    s += intvalue("table_size", table_size, 1, true);
-    s += intvalue("buy_in", buy_in, 1, true);
-    s += intvalue("big_blind", big_blind, 1, true);
-    s += intvalue("blind_timer", blind_timer, 1, true);
-    s += stringvalue("tables", json_stringarray(tables), 1, false);
-    s += "}";
-  }
+    s += format_json("id", id, 1);
+    s += format_json("type", to_string(type), 1);
+    s += format_json("format", to_string(format), 1);
+    s += format_json("table_size", table_size, 1);
+    s += format_json("buy_in", buy_in, 1);
+    s += format_json("big_blind", big_blind, 1);
+    s += format_json("blind_timer", blind_timer, 1);
+    s += format_json("tables", tables, 1, false);
+    s += "}\n";
+    return s;
+  };
 };
+
 
 struct Table {
   string id;
@@ -112,49 +135,33 @@ struct Table {
   vector<string> player_ids;
   HandSimulation hand_sim;
 
-  string output_table(){
+  string to_json() {
     string s = "{\n";
-    s += "\t\"id\": \"" + id + "\",\n";
-    s += "\t\"game_id\": \"" + game_id + "\",\n";
-    s += "\t\"player_ids\": [\n";
-    if(player_ids.size() > 0) {
-      for(int i = 0; i < player_ids.size() - 1; i++){
-        s += "\t\t\"" + player_ids[i] + "\",\n";
-      }
-      s += "\t\t\"" + player_ids.back() + "\"\n";
-    }
-    s += "\t],\n";
-    vector<Card> board = hand_sim.getBoard();
-    vector<string> s_board;
-    for(int i = 0; i < board.size(); i++){
-      s_board.push_back(board[i].ShowCard());
-    }
-    stringvalue("board", json_stringarray(s_board), 1, true);
-    //variable camelCase to snake_case
-    s += "\t\"pots\": " + json_intarray(hand_sim.getPots()) + ",\n";
-    s += "\t\"bets\": " + json_intarray(hand_sim.getBets()) + ",\n";
-    s += "\t\"stacks\": " + json_intarray(hand_sim.getStacks()) + ",\n";
-    s += "\t\"button_location\": " + to_string(hand_sim.getButtonLocation()) + ",\n";
-    s += "\t\"current_turn\": " + to_string(hand_sim.getCurrentTurn()) + ",\n";
-    s += "\t\"active_players\": "
-      + json_intarray(vector<int>(hand_sim.getActivePlayers().begin(), hand_sim.getActivePlayers().end()))
-      + ",\n";
-    s += "\t\"current_bet\": " + to_string(hand_sim.getCurrentBet()) + ",\n";
-    s += "\t\"min_raise\": " + to_string(hand_sim.getMinRaise()) + "\n";
+    s += format_json("id", id, 1);
+    s += format_json("game_id", game_id, 1);
+    s += format_json("player_ids", player_ids, 1);
+    s += format_json("board", hand_sim.getBoard(), 1);
+    s += format_json("pots", hand_sim.getPots(), 1);
+    s += format_json("bets", hand_sim.getBets(), 1);
+    s += format_json("stacks", hand_sim.getStacks(), 1);
+    s += format_json("button_location", hand_sim.getButtonLocation(), 1);
+    s += format_json("current_turn", hand_sim.getCurrentTurn(), 1);
+    s += format_json("active_players", hand_sim.getActivePlayers(), 1);
+    s += format_json("current_bet", hand_sim.getCurrentBet(), 1);
+    s += format_json("min_raise", hand_sim.getMinRaise(), 1, false);
     s += "}\n";
-    //tick not implemented yet
     return s;
-  }
+  };
 };
 
 map<string, Game*> all_games;
 map<string, Table*> all_tables;
-map<string, mutex*> game_mutexes;
-map<string, mutex*> table_mutexes;
-mutex all_games_mutex;
-mutex all_tables_mutex;
+map<string, shared_mutex*> game_mutexes;
+map<string, shared_mutex*> table_mutexes;
+shared_mutex all_games_mutex;
+shared_mutex all_tables_mutex;
 
-void initServer() {
+void init_server() {
   HandSimulation hs(2, 0, vector<int>(6, 200));
   hs.initBettingRound();
   all_tables["5"] = new Table {
@@ -163,44 +170,54 @@ void initServer() {
     {"a", "b", "c", "d", "e", "f"},
     hs
   };
-  table_mutexes["5"] = new mutex;
+  table_mutexes["5"] = new shared_mutex;
+  all_games["1234"] = new Game {
+    "1234",
+    nlhe,
+    sitngo,
+    6,
+    200,
+    2,
+    15,
+    {"5"}
+  };
+  game_mutexes["1234"] = new shared_mutex;
 }
 
-
 string get_game_from_id(string game_id) {
-  string res;
-  all_games_mutex.lock(); 
+  string response;
+  all_games_mutex.lock_shared();
   if(all_games.count(game_id) > 0){
-    game_mutexes[game_id]->lock();
+    game_mutexes[game_id]->lock_shared();
     Game& game = *all_games[game_id];
-    res = game.output_game();
-    game_mutexes[game_id]->unlock();
+    response = game.to_json();
+    game_mutexes[game_id]->unlock_shared();
   } else {
-    res = "{\n";
-    res += "\t\"error\": \"Game ID Not Found\"\n";
-    res += "}\n";
+    response = "{\n";
+    response += format_json("error", "Game ID Not Found", 1, false);
+    response += "}\n";
   }
-  all_games_mutex.unlock();
+  all_games_mutex.unlock_shared();
 
-  return res;
+  return response;
 };
 
 string get_table_from_id(
   string table_id
 ) {
-  string content;
-  all_tables_mutex.lock();
+  string response;
+  all_tables_mutex.lock_shared();
   if(all_tables.count(table_id)){
-    table_mutexes[table_id]->lock();
+    table_mutexes[table_id]->lock_shared();
     Table& thetable = *all_tables[table_id];
-    content = thetable.output_table();
-    table_mutexes[table_id]->unlock();
+    response = thetable.to_json();
+    table_mutexes[table_id]->unlock_shared();
   } else {
-    content = "{\n";
-    content += "\t\"error\": \"Table ID Not Found\"\n";
-    content += "}\n";
+    response = "{\n";
+    response += format_json("error", "Table ID Not Found", 1, false);
+    response += "}\n";
   }
-  all_tables_mutex.unlock();
+  all_tables_mutex.unlock_shared();
 
-  return content;
+  return response;
 };

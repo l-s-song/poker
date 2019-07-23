@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -fmax-errors=1 -g -std=c++11
+CXXFLAGS = -fmax-errors=1 -g -std=c++17 -Wall
 
 Card.o: Card.h
 
@@ -11,7 +11,10 @@ HandSimulation.o: HandSimulation.h HandLogic.h Deck.h Card.h
 
 PokerTerminal.o: HandSimulation.h HandLogic.h Deck.h Card.h
 
-Server.o: Server.h HandSimulation.h HandLogic.h Deck.h Card.h
+Server.o: HandSimulation.h.gch Server.h HandSimulation.h HandLogic.h Deck.h Card.h
+
+HandSimulation.h.gch: HandSimulation.h HandLogic.h Deck.h Card.h
+	$(CXX) $(CXXFLAGS) -o HandSimulation.h.gch HandSimulation.h
 
 HTTPServer.h.gch: HTTPServer.h
 	$(CXX) $(CXXFLAGS) -o HTTPServer.h.gch HTTPServer.h
@@ -22,9 +25,11 @@ HTTPServer.o: HTTPServer.cpp HTTPServer.h.gch
 build-debug: HandSimulation.h HandLogic.h Deck.h Card.h
 	$(CXX) $(CXXFLAGS) -c PokerTerminal.cpp
 
-server: HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o
+build-server: HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o
 	$(CXX) $(CXXFLAGS) -pthread -o Server HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o -lboost_system
 
+server: build-server
+	valgrind --log-file=valgrind.log ./Server
 
 debug: build-debug
 	./poker

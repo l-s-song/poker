@@ -2,6 +2,7 @@
 **/a.out
 **/*.o
 **/*.lock
+**/*.log
 api/poker_logic/http
 api/poker_logic/poker
 api/poker_logic/Server
