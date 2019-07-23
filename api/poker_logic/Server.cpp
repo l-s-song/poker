@@ -132,22 +132,52 @@ string player_act(string session_id, string table_id, string action, int bet_siz
     table_mutexes[table_id]->lock();
     vector<string>& player_ids = all_tables[table_id]->player_ids;
     HandSimulation& hs = all_tables[table_id]->hand_sim;
-    if (player_ids[hs.getCurrentTurn()] == player_id) {
+    if (player_ids[hs.getCurrentTurn()] != player_id) {
+      ret = error_json("It is not your turn");
+    } else {
       if (action == "raise") {
-
+        if (bet_size <= hs.getCurrentBet()) {
+          ret = error_json("Raise must be larger than the curent bet");
+        } else if (!hs.isValidBet(bet_size)) {
+          ret = error_json("Raise size is not valid")
+        } else {
+          hs.Bet(bet_size);
+        }
       } else if (action == "bet") {
-
+        if (hs.getCurrentBet() != 0) {
+          ret = error_json("Bet cannot be made as a bet already exists");
+        } else if (!hs.isValidBet(bet_size)) {
+          ret = error_json("Bet size is not valid")
+        } else {
+          hs.Bet(bet_size);
+        }
       } else if (action == "call") {
-
+        if (hs.canCheck()) {
+          ret = error_json("Cannot call if check is available");
+        } else {
+          hs.Call();
+        }
       } else if (action == "check") {
-
+        if (!hs.canCheck()) {
+          ret = error_json("Cannot check, the current bet is " + to_string(hs.getCurrentBet()));
+        } else {
+          hs.Check();
+        }
       } else if (action == "fold") {
-
+        hs.Fold();
       } else {
         ret = error_json(action + " is not a valid action");
       }
-    } else {
-      ret = error_json("It is not your turn");
+      while(hs.isBettingRoundOver()) {
+        hs.endBettingRound();
+        if (hs.isHandOver()) {
+          break;
+        }
+        hs.initBettingRound();
+      }
+      if (hs.isHandOver()) {
+        // Unimplemented
+      }
     }
     table_mutexes[table_id]->unlock();
   }
@@ -192,9 +222,9 @@ string add_to_queue(string session_id, string type, string format, int table_siz
       table_mutexes[table_id] = new shared_mutex;
       all_tables_mutex.unlock();
 
-      ret =   "{\n"
-            + format_json("game_id", game_id, 1, false)
-            + "}\n";
+      ret = "{\n"
+          + format_json("game_id", game_id, 1, false)
+          + "}\n";
 
       player_ids.clear();
     }

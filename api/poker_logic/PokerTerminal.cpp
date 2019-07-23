@@ -103,7 +103,7 @@ void BettingRound(HandSimulation& hs){
     WipeScreen();
     cout << ShowTable(hs, false);
     char ans = '\0';
-    if(hs.canCheck(hs.getCurrentTurn())) {
+    if(hs.canCheck()) {
       while(ans != 'c' && ans != 'b'){
         cout << "Check or Bet? c/b" << endl;
         cin >> ans;
@@ -130,7 +130,7 @@ void BettingRound(HandSimulation& hs){
       int bet = 0;
       cout << "How much are you betting?" << endl;
       cin >> bet;
-      while(!hs.IsValidBet(hs.getCurrentTurn(), bet)){
+      while(!hs.isValidBet(bet)){
         cin.clear();
         cin.ignore();
         cout << "That is not a valid bet size." << endl;

@@ -49,7 +49,8 @@ public:
   int bettingRound;
 
   HandSimulation(int bigBlind, int buttonLocation, const vector<int>& stacks);
-  bool IsValidBet(int player, int betSize);
+  bool isValidBet(int player, int betSize);
+  bool isValidBet(int betSize);
   bool comparePlayerFinalHands(int a, int b);
   FinalHand GetFinalHand(int player);
   void initBettingRound();
@@ -60,7 +61,7 @@ public:
   void Fold();
   bool isHandOver();
   bool isBettingRoundOver();
-  bool canCheck(int player);
+  bool canCheck();
   bool isAllIn(int player);
   bool hasFolded(int player);
   void CollectPot();

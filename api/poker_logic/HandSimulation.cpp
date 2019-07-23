@@ -77,7 +77,7 @@ const pair<Card, Card>& HandSimulation::getHand(int player) {
   return hands[player];
 }
 
-bool HandSimulation::IsValidBet(int player, int betSize){
+bool HandSimulation::isValidBet(int player, int betSize){
   //checks if bet/raise size is good. Doesn't do calls
   if(betSize - currentBet >= max(betDifference, bigBlind)
     || betSize == stacks[player] + bets[player]){
@@ -85,6 +85,10 @@ bool HandSimulation::IsValidBet(int player, int betSize){
   } else {
     return false;
   }
+}
+
+bool HandSimulation::isValidBet(int betSize) {
+  return isValidBet(currentTurn, betSize);
 }
 
 bool HandSimulation::comparePlayerFinalHands(int a, int b) {
@@ -223,8 +227,8 @@ void HandSimulation::advanceAction() {
   }
 }
 
-bool HandSimulation::canCheck(int player) {
-  return bets[player] >= currentBet;
+bool HandSimulation::canCheck() {
+  return bets[currentTurn] >= currentBet;
 }
 
 bool HandSimulation::isAllIn(int player) {
