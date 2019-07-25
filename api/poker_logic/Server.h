@@ -1,4 +1,8 @@
 #ifndef SERVER_H
+#include "HandSimulation.h"
+
+#include <shared_mutex>
+#include <iostream>
 #include <string>
 
 enum game_type {
@@ -12,16 +16,43 @@ enum game_format {
   tournament
 };
 
-void init_server();
+struct Game {
+  string id;
+  string name;
+  game_type type;
+  game_format format;
+  int table_size;
+  int buy_in;
+  int big_blind;
+  int blind_timer;
+  vector<string> player_ids;
+  vector<string> tables;
+  vector<string> leaving_players;
 
-std::string get_game_from_id(std::string id);
-std::string get_table_from_id(std::string id);
-std::string add_to_queue(std::string session_id, std::string type, std::string format, int table_size, int buy_in_or_big_blind);
-std::string get_player_id(std::string session_id);
-void set_player_id(std::string session_id, std::string player_id);
-std::string player_act(std::string session_id, std::string table_id, std::string action, int bet_size);
-std::string generate_id();
-std::string get_games();
+  string to_json();
+  string to_json(int numtab);
+};
+
+struct Table {
+  string id;
+  string game_id;
+  vector<string> player_ids;
+  HandSimulation hand_sim;
+
+  string to_json();
+};
+
+map<string, Game*> all_games;
+map<string, Table*> all_tables;
+map<string, shared_mutex*> game_mutexes;
+map<string, shared_mutex*> table_mutexes;
+map<string, string> session_id_to_player_id;
+shared_mutex all_games_mutex;
+shared_mutex all_tables_mutex;
+shared_mutex session_id_to_player_id_mutex;
+mutex queue_mutex;
+typedef tuple<game_type, game_format, int, int> queue_settings;
+map<queue_settings, vector<string>> queue;
 
 #endif
 #define SERVER_H

@@ -1,5 +1,15 @@
+#ifndef JSON_H
 #include "Card.h"
 #include "Server.h"
+
+string repeat_string(string s, int a){
+  //returns string that is string s repeated a times
+  string ret = "";
+  for(int i = 0; i < a; i++){
+    ret += s;
+  }
+  return ret;
+}
 
 string to_string(game_type type){
   if(type == nlhe){
@@ -126,3 +136,44 @@ string error_json(string error){
         + format_json("error", error, 1, false)
         + "}\n";
 }
+
+string Game::to_json() {
+  return to_json(0);
+}
+
+string Game::to_json(int numtab) {
+  string s = repeat_string("\t", numtab) + "{\n";
+  s += format_json("id", id, 1 + numtab);
+  s += format_json("name", name,  1 + numtab);
+  s += format_json("type", to_string(type), 1 + numtab);
+  s += format_json("format", to_string(format), 1 + numtab);
+  s += format_json("table_size", table_size, 1 + numtab);
+  s += format_json("buy_in", buy_in, 1 + numtab);
+  s += format_json("big_blind", big_blind, 1 + numtab);
+  s += format_json("blind_timer", blind_timer, 1 + numtab);
+  s += format_json("num_players",  player_ids.size(), 1 + numtab);
+  s += format_json("tables", tables, 1 + numtab, false);
+  s += repeat_string("\t", numtab) + "}";
+  return s;
+}
+
+string Table::to_json() {
+  string s = "{\n";
+  s += format_json("id", id, 1);
+  s += format_json("game_id", game_id, 1);
+  s += format_json("player_ids", player_ids, 1);
+  s += format_json("board", hand_sim.getBoard(), 1);
+  s += format_json("pots", hand_sim.getPots(), 1);
+  s += format_json("bets", hand_sim.getBets(), 1);
+  s += format_json("stacks", hand_sim.getStacks(), 1);
+  s += format_json("button_location", hand_sim.getButtonLocation(), 1);
+  s += format_json("current_turn", hand_sim.getCurrentTurn(), 1);
+  s += format_json("active_players", hand_sim.getActivePlayers(), 1);
+  s += format_json("current_bet", hand_sim.getCurrentBet(), 1);
+  s += format_json("min_raise", hand_sim.getMinRaise(), 1, false);
+  s += "}";
+  return s;
+};
+
+#endif
+#define JSON_H

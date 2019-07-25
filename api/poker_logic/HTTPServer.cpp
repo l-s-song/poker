@@ -1,5 +1,5 @@
 #include "HTTPServer.h"
-#include "Server.h"
+#include "APIFunctions.h"
 
 #include <iostream>
 
@@ -76,6 +76,7 @@ int main(){
     string games_json = get_games();
 
     *response << "HTTP/1.1 200 OK\r\n"
+              << "Access-Control-Allow-Origin: " << "*" << "\r\n"
               << "Content-Length: " << games_json.size() << "\r\n"
               << "\r\n"
               << games_json;
