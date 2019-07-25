@@ -37,7 +37,7 @@ string generate_id() {
 
 void init_server() {
   srand(time(NULL));
-  queue_settings qs = make_tuple(nlhe, ring, 6, 2);
+  game_settings qs = {nlhe, ring, 6, -1, 2};
   queue[qs];
 }
 
@@ -61,8 +61,65 @@ string get_games() {
   return ret;
 }
 
+// requires: tables[table_id].hand_sim.isHandOver()
 void start_new_hand(string table_id) {
-
+  // Awarding money from prevous hand
+  // Get buttonLocation and vector<int> stacks from previous handsim
+  // Clear out any players that are in game.leaving_players
+  // Add waiting_players into the game
+  // Create new handsim based on previous handsim
+  // break up game and add players to queue
+  all_tables_mutex.lock();
+  all_games_mutex.lock();
+  Table* table = all_tables[table_id];
+  HandSimulation* hand_sim = &table->hand_sim;
+  hand_sim->awardWinners();
+  int buttonLocation = hand_sim->getButtonLocation();
+  vector<int> stacks = hand_sim->getStacks();
+  vector<string> player_ids = table->player_ids;
+  string& game_id = table->game_id;
+  Game* game = all_games[game_id];
+  //remove leaving_players
+  for(string& player_id : game->leaving_players) {
+    for(int i = 0; i < player_ids.size(); i++) {
+      if (player_ids[i] == player_id) {
+        player_ids.erase(player_ids.begin() + i);
+        stacks.erase(stacks.begin() + i);
+        i--;
+      }
+    }
+  }
+  //add waiting_players
+  // TODO: Fix for tournaments
+  for(string& player_id : game->waiting_players) {
+    player_ids.push_back(player_id);
+    stacks.push_back(100*game->settings.big_blind);
+  }
+  //updating table and game
+  game->player_ids = player_ids;
+  game->leaving_players.clear();
+  game->waiting_players.clear();
+  table->player_ids = player_ids;
+  // TODO: dead button, dead smallBlind
+  buttonLocation += 1;
+  buttonLocation %= game->settings.table_size;
+  if(player_ids.size() > game->settings.table_size/2){
+    int big_blind = game->settings.big_blind; // game->settings.format == ring ? game->settings.big_blind : game->big_blind
+    HandSimulation hs(big_blind, buttonLocation, stacks);
+    hs.initBettingRound();
+    table->hand_sim = move(hs);
+  } else {
+    all_games.erase(game_id);
+    all_tables.erase(table_id);
+    delete table;
+    delete game;
+    delete game_mutexes[game_id];
+    delete table_mutexes[table_id];
+    game_mutexes.erase(game_id);
+    table_mutexes.erase(table_id);
+  }
+  all_games_mutex.unlock();
+  all_tables_mutex.unlock();
 }
 
 string player_act(string session_id, string table_id, string action, int bet_size) {
@@ -137,23 +194,43 @@ string player_act(string session_id, string table_id, string action, int bet_siz
 
 // queue_mutex must be locked in order to call this
 void create_tables_from_queues() {
-  for(auto specific_queue : queue) {
-    queue_settings settings = specific_queue->first;
-    vector<string>& player_ids = specific_queue->second;
-    while(player_ids.size() > table_size/2){
+  //fill existing nonempty tables
+  all_games_mutex.lock_shared();
+  for(auto& elem : all_games){
+    const string& game_id = elem.first;
+    game_mutexes[game_id]->lock();
+    Game* g = elem.second;
+    game_settings settings = g->settings;
+    while( queue[settings].size() > 0
+        && g->player_ids.size() + g->waiting_players.size() < g->settings.table_size
+    ) {
+      string player_id = queue[settings].back();
+      queue[settings].pop_back();
+      g->waiting_players.push_back(player_id);
+    }
+    game_mutexes[game_id]->unlock();
+  }
+  all_games_mutex.unlock_shared();
+  //fill existing nonempty tables before populating new tables
+  for(auto& specific_queue : queue) {
+    game_settings settings = specific_queue.first;
+    if (settings.format != ring) {
+      throw "We haven't coded tournaments yet";
+    }
+    vector<string>& player_ids = specific_queue.second;
+    while(player_ids.size() > settings.table_size/2){
       //make new game
       vector<string> new_table_player_ids;
-      while (new_table_player < table_size && player_ids.size() > 0) {
-
+      while (new_table_player_ids.size() < settings.table_size && player_ids.size() > 0) {
+        new_table_player_ids.push_back(player_ids.back());
+        player_ids.pop_back();
       }
       string table_id = generate_id();
       string game_id = generate_id();
-      HandSimulation hs(buy_in_or_big_blind, 0, vector<int>(table_size, 100*buy_in_or_big_blind));
+      HandSimulation hs(settings.big_blind, 0, vector<int>(settings.table_size, 100*settings.big_blind));
       hs.initBettingRound();
-      Table* table = new Table{table_id, game_id, player_ids, hs};
-      Game* game = new Game {
-        game_id, "NYC", get<0>(settings), get<1>(settings), get<2>(settings), -1, get<3>(settings), -1, player_ids, {table_id}, {}
-      };
+      Table* table = new Table{table_id, game_id, new_table_player_ids, hs};
+      Game* game = new Game(game_id, "NYC", settings, {table_id}, new_table_player_ids);
 
       all_tables_mutex.lock();
       all_tables[table_id] = table;
@@ -182,12 +259,17 @@ string add_to_queue(string session_id, string type, string format, int table_siz
   }
 
   string ret = "{}";
-  queue_settings settings = {to_game_type(type), to_game_format(format), table_size, buy_in_or_big_blind};
+  game_settings settings = {to_game_type(type), to_game_format(format), table_size, -1, -1};
+  if (settings.format == ring) {
+    settings.big_blind = buy_in_or_big_blind;
+  } else {
+    settings.buy_in = buy_in_or_big_blind;
+  }
   queue_mutex.lock();
   if (queue.count(settings)) {
     vector<string>& player_ids = queue[settings];
     player_ids.push_back(player_id);
-    empty_queues();
+    create_tables_from_queues();
   } else {
     ret = invalid_settings;
   }

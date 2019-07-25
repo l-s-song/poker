@@ -145,14 +145,18 @@ string Game::to_json(int numtab) {
   string s = repeat_string("\t", numtab) + "{\n";
   s += format_json("id", id, 1 + numtab);
   s += format_json("name", name,  1 + numtab);
-  s += format_json("type", to_string(type), 1 + numtab);
-  s += format_json("format", to_string(format), 1 + numtab);
-  s += format_json("table_size", table_size, 1 + numtab);
-  s += format_json("buy_in", buy_in, 1 + numtab);
-  s += format_json("big_blind", big_blind, 1 + numtab);
-  s += format_json("blind_timer", blind_timer, 1 + numtab);
-  s += format_json("num_players",  player_ids.size(), 1 + numtab);
-  s += format_json("tables", tables, 1 + numtab, false);
+  s += format_json("type", to_string(settings.type), 1 + numtab);
+  s += format_json("format", to_string(settings.format), 1 + numtab);
+  s += format_json("table_size", settings.table_size, 1 + numtab);
+  if (settings.format == ring) {
+    s += format_json("big_blind", settings.big_blind, 1 + numtab);
+  } else {
+    s += format_json("buy_in", settings.buy_in, 1 + numtab);
+    //s += format_json("big_blind", blind_timer, 1 + numtab);
+    //s += format_json("blind_timer", blind_timer, 1 + numtab);
+  }
+  s += format_json("num_players", player_ids.size() + waiting_players.size(), 1 + numtab);
+  s += format_json("tables", table_ids, 1 + numtab, false);
   s += repeat_string("\t", numtab) + "}";
   return s;
 }
