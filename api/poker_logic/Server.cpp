@@ -2,6 +2,9 @@
 #include "JSON.h"
 #include "APIFunctions.h"
 
+#include <iostream>
+#include <thread>
+
 string get_player_id(string session_id) {
   session_id_to_player_id_mutex.lock_shared();
   string player_id = "";
@@ -56,6 +59,10 @@ string get_games() {
   all_games_mutex.unlock_shared();
   ret += "]\n";
   return ret;
+}
+
+void start_new_hand(string table_id) {
+
 }
 
 string player_act(string session_id, string table_id, string action, int bet_size) {
@@ -116,8 +123,10 @@ string player_act(string session_id, string table_id, string action, int bet_siz
         hs.initBettingRound();
       }
       if (hs.isHandOver()) {
-
-        // Unimplemented
+        thread t([table_id]{
+          this_thread::sleep_for(chrono::milliseconds(2000));
+          start_new_hand(table_id);
+        });
       }
     }
     table_mutexes[table_id]->unlock();
@@ -127,14 +136,16 @@ string player_act(string session_id, string table_id, string action, int bet_siz
 }
 
 // queue_mutex must be locked in order to call this
-void distribute() {
+void create_tables_from_queues() {
   for(auto specific_queue : queue) {
     queue_settings settings = specific_queue->first;
     vector<string>& player_ids = specific_queue->second;
     while(player_ids.size() > table_size/2){
       //make new game
-      vector<string> next_player_ids;
-      
+      vector<string> new_table_player_ids;
+      while (new_table_player < table_size && player_ids.size() > 0) {
+
+      }
       string table_id = generate_id();
       string game_id = generate_id();
       HandSimulation hs(buy_in_or_big_blind, 0, vector<int>(table_size, 100*buy_in_or_big_blind));
@@ -153,10 +164,6 @@ void distribute() {
       all_games[game_id] = game;
       game_mutexes[game_id] = new shared_mutex;
       all_games_mutex.unlock();
-
-      ret = "{\n"
-          + format_json("game_id", game_id, 1, false)
-          + "}\n";
 
       player_ids.clear();
     }
@@ -180,7 +187,7 @@ string add_to_queue(string session_id, string type, string format, int table_siz
   if (queue.count(settings)) {
     vector<string>& player_ids = queue[settings];
     player_ids.push_back(player_id);
-    distribute();
+    empty_queues();
   } else {
     ret = invalid_settings;
   }

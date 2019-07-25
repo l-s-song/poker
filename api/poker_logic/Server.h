@@ -2,7 +2,6 @@
 #include "HandSimulation.h"
 
 #include <shared_mutex>
-#include <iostream>
 #include <string>
 
 enum game_type {
