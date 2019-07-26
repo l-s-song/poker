@@ -4,6 +4,6 @@
 **/*.lock
 **/*.log
 api/poker_logic/http
-api/poker_logic/poker
+api/poker_logic/PokerTerminal
 api/poker_logic/Server
 api/rust_package

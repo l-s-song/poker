@@ -22,8 +22,11 @@ HTTPServer.h.gch: HTTPServer.h
 HTTPServer.o: HTTPServer.cpp HTTPServer.h.gch
 	$(CXX) $(CXXFLAGS) -c HTTPServer.cpp
 
-build-debug: HandSimulation.h HandLogic.h Deck.h Card.h
-	$(CXX) $(CXXFLAGS) -c PokerTerminal.cpp
+build-terminal: PokerTerminal.o HandSimulation.o HandLogic.o Deck.o Card.o
+	$(CXX) $(CXXFLAGS) -o PokerTerminal PokerTerminal.o HandSimulation.o HandLogic.o Deck.o Card.o
+
+terminal: build-terminal
+	./PokerTerminal
 
 build-server: HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o
 	$(CXX) $(CXXFLAGS) -pthread -o Server HTTPServer.o Server.o HandSimulation.o HandLogic.o Deck.o Card.o -lboost_system
