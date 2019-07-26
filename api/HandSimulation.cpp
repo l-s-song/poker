@@ -186,7 +186,7 @@ void HandSimulation::Call() {
 }
 
 void HandSimulation::Check() {
-  if (currentBet > 0) {
+  if (currentBet != bets[currentTurn]) {
     throw "Cannot check, as currentBet is non-zero";
   }
   advanceAction();

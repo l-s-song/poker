@@ -180,10 +180,11 @@ string player_act(string session_id, string table_id, string action, int bet_siz
         hs.initBettingRound();
       }
       if (hs.isHandOver()) {
-        thread t([table_id]{
+        thread t([table_id] {
           this_thread::sleep_for(chrono::milliseconds(2000));
           start_new_hand(table_id);
         });
+        t.detach();
       }
     }
     table_mutexes[table_id]->unlock();
@@ -202,7 +203,7 @@ void create_tables_from_queues() {
     Game* g = elem.second;
     game_settings settings = g->settings;
     while( queue[settings].size() > 0
-        && g->player_ids.size() + g->waiting_players.size() < g->settings.table_size
+        && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
     ) {
       string player_id = queue[settings].back();
       queue[settings].pop_back();
@@ -227,7 +228,7 @@ void create_tables_from_queues() {
       }
       string table_id = generate_id();
       string game_id = generate_id();
-      HandSimulation hs(settings.big_blind, 0, vector<int>(settings.table_size, 100*settings.big_blind));
+      HandSimulation hs(settings.big_blind, 0, vector<int>(new_table_player_ids.size(), 100*settings.big_blind));
       hs.initBettingRound();
       Table* table = new Table{table_id, game_id, new_table_player_ids, hs};
       Game* game = new Game(game_id, "NYC", settings, {table_id}, new_table_player_ids);

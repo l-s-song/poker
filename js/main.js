@@ -50,9 +50,9 @@ function loadGames(){
   xhr.open('GET', 'http://localhost:8080/api/games');
   xhr.onload = function() {
     if (xhr.status === 200) {
-      console.log("Response: " + xhr.responseText);
+      //console.log("Response: " + xhr.responseText);
       gamelist = JSON.parse(xhr.responseText);
-      console.log(gamelist);
+      //console.log(gamelist);
     } else {
       alert('loadGames failed');
     }
@@ -169,7 +169,7 @@ function populateTable(table){
 
 function updateTable(){
   loadGames();
-  console.log(gamelist);
+  //console.log(gamelist);
   populateTable(gamelist);
 }
 
