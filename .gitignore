@@ -1,9 +1,8 @@
-**/*.gch
-**/a.out
-**/*.o
-**/*.lock
-**/*.log
-api/poker_logic/http
-api/poker_logic/poker
-api/poker_logic/Server
+api/*.gch
+api/*.o
+api/*.log
+api/http
+api/PokerTerminal
+api/DebugServer
+api/Server
 api/rust_package
