@@ -87,7 +87,7 @@ private:
   int prevBettor;
   // 0 = Preflop, 1 = Flop, 2 = Turn, 3 = River, 4 = Over
   int bettingRound;
-  
+
   void placeMoney(int player, int betSize);
   void advanceAction();
 };
