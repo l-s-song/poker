@@ -2,10 +2,16 @@
 Plans to be a functional poker website
 
 # Dependencies
+
 Apache2
-G++
+
+
+g++
+
 Boost
+
 OpenSSL
+
 eidheim's Simple-Web-Server
 
 # Setup
@@ -16,10 +22,11 @@ First, we install the dependencies
 
 Now, we link the git directory to apache2's host location.
 ```
-ln -s . /var/www/html
+sudo rm -r /var/www/html
+sudo ln -s . /var/www/html
 ```
 
-Inside of `etc/apache2/apache2.conf`, add
+Inside of `etc/apache2/apache2.conf`, we add the line
 ```
 ProxyPass /api http://localhost:8080/api
 ```
@@ -35,5 +42,7 @@ Deny from all
 ```
 This will only allow apache to serve files needed to render the webpage, so that users cannot view the rest of the git repository.
 
+Make sure that your server is only accepting requests to port 80, and not port 8080.
+
 # Run
-To run the server, simple execute `./run_server.sh`
+To run the server, simply execute `./run_server.sh`
