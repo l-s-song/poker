@@ -126,6 +126,7 @@ aside {
 .tables table {
   width: 100%;
   text-align: center;
+  margin-bottom: 2em;
 }
 
 .tables td, table {

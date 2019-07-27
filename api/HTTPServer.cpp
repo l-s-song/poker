@@ -164,5 +164,28 @@ int main(){
     }
   };
 
+  server.resource["^/api/leave"]["POST"] = [](
+    shared_ptr<HttpServer::Response> response,
+    shared_ptr<HttpServer::Request> request
+  ) {
+    string session_id = get_session_id(request);
+    try {
+      ptree pt;
+      read_json(request->content, pt);
+      string game_id = pt.get<string>("game_id");
+      string content = player_leave(session_id, game_id);
+
+      *response << "HTTP/1.1 200 OK\r\n"
+                << "Content-Length: " << content.length() << "\r\n"
+                << "\r\n"
+                << content;
+    } catch(const exception &e) {
+      *response << "HTTP/1.1 400 Bad Request\r\n"
+                << "Content-Length: " << strlen(e.what()) << "\r\n"
+                << "\r\n"
+                << e.what();
+    }
+  };
+
   server.start();
 }

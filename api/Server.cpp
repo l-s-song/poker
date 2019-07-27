@@ -122,6 +122,52 @@ void start_new_hand(string table_id) {
   all_tables_mutex.unlock();
 }
 
+string player_leave(string session_id, string game_id){
+  string player_id = get_player_id(session_id);
+  if (player_id == "") {
+    return error_json("Player not logged in");
+  }
+  string ret;
+  all_games_mutex.lock_shared();
+  if(all_games.count(game_id) == 0){
+    ret = error_json("Game does not exist.");
+  } else {
+    game_mutexes[game_id]->lock();
+    Game* game = all_games[game_id];
+
+    bool already_leaving = false;
+    for(int i = 0; i < game->leaving_players.size(); i++){
+      if(game->leaving_players[i] == player_id){
+        already_leaving = true;
+      }
+    }
+
+    if(already_leaving){
+      ret = error_json("Player is already leaving");
+    } else {
+      vector<string>& player_ids = game->player_ids;
+      bool is_playing = false;
+      for(int i = 0; i < player_ids.size(); i++){
+        if(player_ids[i] == player_id && !already_leaving){
+          is_playing = true;
+          player_ids.erase(player_ids.begin() + i);
+          game->leaving_players.push_back(player_id);
+          break;
+        }
+      }
+
+      if (!is_playing){
+        ret = error_json("Player is not playing");
+      } else {
+        ret = "{}\n";
+      }
+    }
+    game_mutexes[game_id]->unlock();
+  }
+  all_games_mutex.unlock_shared();
+  return ret;
+}
+
 string player_act(string session_id, string table_id, string action, int bet_size) {
   //poker action posts
   string player_id = get_player_id(session_id);

@@ -44,16 +44,16 @@ function populateRows() {
 
 gamelist = [];
 
-function loadGames(){
+function loadGames(callback){
   //returns data of all games
   xhr = new XMLHttpRequest();
-  xhr.open('GET', 'http://localhost:8080/api/games');
+  xhr.open('GET', 'api/games');
   xhr.onload = function() {
     if (xhr.status === 200) {
-      //console.log("Response: " + xhr.responseText);
       gamelist = JSON.parse(xhr.responseText);
-      //console.log(gamelist);
+      callback(gamelist);
     } else {
+      console.log(xhr.status, xhr.responseText);
       alert('loadGames failed');
     }
   }
@@ -151,9 +151,9 @@ function populateTable(table){
     elem = [
       element.type,
       "NYC",
-      "5",
+      element.num_players,
       element.table_size,
-      element.big_blind + "/" + (element.big_blind/2)
+      (element.big_blind/2) + "/" + element.big_blind
       //\u00A2
     ];
     let row = newtable.insertRow();
@@ -168,9 +168,7 @@ function populateTable(table){
 }
 
 function updateTable(){
-  loadGames();
-  //console.log(gamelist);
-  populateTable(gamelist);
+  loadGames(populateTable);
 }
 
 populateRows();

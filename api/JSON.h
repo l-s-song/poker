@@ -156,6 +156,7 @@ string Game::to_json(int numtab) {
     //s += format_json("blind_timer", blind_timer, 1 + numtab);
   }
   s += format_json("num_players", player_ids.size() + waiting_players.size(), 1 + numtab);
+  s += format_json("player_ids", player_ids, 1 + numtab);
   s += format_json("tables", table_ids, 1 + numtab, false);
   s += repeat_string("\t", numtab) + "}";
   return s;

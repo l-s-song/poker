@@ -20,8 +20,8 @@ function act(table_id, action, bet_size, callback) {
     let current_turn = table.current_turn;
     let current_player = table.player_ids[current_turn];
     $.get("/api/login/" + current_player, function(){
-      $.post("/api/act", '{"table_id": "' + table_id + '", "action": "' + action + '", "bet_size": ' + bet_size + '}', function(status, data) {
-        console.log(status, data)
+      $.post("/api/act", '{"table_id": "' + table_id + '", "action": "' + action + '", "bet_size": ' + bet_size + '}', function(data, status) {
+        console.log(data, status)
         callback()
       })
     });
@@ -34,7 +34,8 @@ function get_games() {
 
 function get_table(table_id, callback){
   let table;
-  $.get("/api/table/" + table_id, function(status, data) {
+  $.get("/api/table/" + table_id, function(data, status) {
+    // console.log(data);
     table = JSON.parse(data);
     callback(table);
   })
