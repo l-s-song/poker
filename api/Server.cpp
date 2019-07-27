@@ -202,11 +202,40 @@ void create_tables_from_queues() {
     game_mutexes[game_id]->lock();
     Game* g = elem.second;
     game_settings settings = g->settings;
-    while( queue[settings].size() > 0
+    vector<string>& specific_queue = queue[settings];
+    while( specific_queue.size() > 0
         && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
     ) {
-      string player_id = queue[settings].back();
-      queue[settings].pop_back();
+      int new_player_index = -1;
+      for (int i = 0; i < specific_queue.size(); i++) {
+        string& player_id = specific_queue[i];
+        bool already_playing = false;
+        for (string& id : g->player_ids) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        for (string& id : g->waiting_players) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        for (string& id : g->leaving_players) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        if (!already_playing) {
+          new_player_index = i;
+          break;
+        }
+      }
+      if (new_player_index == -1) {
+        // Everyone in the queue, is already sitting at this table
+        break;
+      }
+      string& player_id = queue[settings][new_player_index];
+      queue[settings].erase(queue[settings].begin() + new_player_index);
       g->waiting_players.push_back(player_id);
     }
     game_mutexes[game_id]->unlock();

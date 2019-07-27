@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -fmax-errors=1 -g -std=c++17 -Wall
+CXXFLAGS = -fmax-errors=1 -g -std=c++17 -Wall -Wno-sign-compare
 
 .PHONY: debug prod
 
