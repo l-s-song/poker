@@ -28,7 +28,7 @@ function createSnapjoinButton(snapjoinData) {
 </div>
 */
 
-function populateRows() {
+function populateSnapjoinRows() {
   const snapjoinData = getSnapjoinData(getSettings());
   let row1 = document.getElementById('snapjoin-buttons-1');
   row1.innerHTML = "";
@@ -83,7 +83,7 @@ function updateSettings() {
     document.getElementById("snapjoin-section").classList.add("hidden");
   } else {
     document.getElementById("snapjoin-section").classList.remove("hidden");
-    populateRows();
+    populateSnapjoinRows();
   }
 }
 
@@ -112,33 +112,29 @@ function getSettings() {
     format.tournament = true;
   }
 
-  let sizes = {
-    "headsup": false,
-    "sixmax": false,
-    "fullring": false,
-  };
+  let tableSize;
 
   if (document.getElementById('filter-size-headsup').checked) {
-    sizes.headsup = true;
+    tableSize = 2;
   }
   if (document.getElementById('filter-size-6max').checked) {
-    sizes.sixmax = true;
+    tableSize = 6;
   }
   if (document.getElementById('filter-size-fullring').checked) {
-    sizes.fullring = true;
+    tableSize = 9;
   }
 
   return {
     games,
     format,
-    sizes,
+    tableSize,
   };
 }
 
-function populateTable(table){
+function populateGamesTable(games){
   //type(table) = array {Game, Name, Players, Table Size, Blinds}
-  var newtable = document.createElement("TABLE");
-  let thead = newtable.createTHead();
+  let table = document.createElement("TABLE");
+  let thead = table.createTHead();
   let row = thead.insertRow();
   const data = ["Game", "Name", "Players", "Table Size", "Blinds"];
   for(let key of data){
@@ -147,16 +143,15 @@ function populateTable(table){
     td.appendChild(textNode);
     row.appendChild(td);
   }
-  for(let element of table){
+  for(let element of games){
     elem = [
       element.type,
       "NYC",
       element.num_players,
       element.table_size,
       (element.big_blind/2) + "/" + element.big_blind
-      //\u00A2
     ];
-    let row = newtable.insertRow();
+    let row = table.insertRow();
     for(key of elem){
       let cell = row.insertCell();
       let textNode = document.createTextNode(key);
@@ -164,15 +159,18 @@ function populateTable(table){
     }
   }
   document.getElementById("poker-tables").innerHTML =
-    newtable.innerHTML;
+    table.innerHTML;
 }
 
-function updateTable(){
-  loadGames(populateTable);
+function updateGames(){
+  loadGames(function(games) {
+    populateGamesTable(games);
+
+  });
 }
 
-populateRows();
+populateSnapjoinRows();
 //populateTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);
-setInterval(updateTable, 300);
+setInterval(updateGames, 300);
