@@ -12,7 +12,7 @@ std::string player_leave(std::string session_id, std::string game_id);
 std::string player_act(std::string session_id, std::string table_id, std::string action, int bet_size);
 std::string generate_id();
 std::string get_games();
-std::string get_queue();
+std::string get_queues();
 
 #endif
 #define APIFUNCTIONS_H

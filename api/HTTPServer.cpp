@@ -97,7 +97,7 @@ int main(){
     shared_ptr<HttpServer::Response> response,
     shared_ptr<HttpServer::Request> request
   ) {
-    string queue = get_queue();
+    string queue = get_queues();
     ok(response, queue);
   };
 

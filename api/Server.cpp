@@ -7,8 +7,25 @@
 
 void init_server() {
   srand(time(NULL));
-  game_settings qs = {nlhe, ring, 6, -1, 200};
-  queue[qs];
+  vector<int> big_blinds = {200, 400, 1000, 2000, 4000, 4, 10, 20, 40, 100};
+  for(game_type& type : vector<game_type>({nlhe, plo})) {
+    for(game_format& format : vector<game_format>({ring, sitngo, tournament})) {
+      for(int table_size : vector<int>{2,6,9}){
+        if (format == ring) {
+          for(int big_blind : big_blinds){
+            game_settings settings = {type, format, table_size, -1, big_blind};
+            queue[settings];
+          }
+        } else if (format == sitngo) {
+
+        } else if (format == tournament) {
+
+        } else {
+          throw "No such format";
+        }
+      }
+    }
+  }
 }
 
 string get_player_id(string session_id) {
@@ -62,13 +79,22 @@ string get_games() {
 }
 
 
-string get_queue() {
+string get_queues() {
   string s = "[\n";
+  bool first = true;
   for(auto&& [settings, player_ids] : queue){
-    s += "\t{\n";
+    if (first) {
+      s += "\t{\n";
+    } else {
+      s += ",\n\t{\n";
+    }
     s += to_string_game_setting(settings, 1);
     s += format_json("num_players", player_ids.size(), 2, false);
-    s += "\t}\n";
+    s += "\t}";
+    first = false;
+  }
+  if (!first) {
+    s += "\n";
   }
   s += "]";
   return s;

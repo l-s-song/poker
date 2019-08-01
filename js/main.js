@@ -1,7 +1,19 @@
 function createSnapjoinButton(snapjoinData) {
+  const blindsFormat = {
+    200: '$1/$2',
+    400: '$2/$4',
+    1000: '$5/$10',
+    2000: '$10/$20',
+    4000: '$20/$40',
+    4: '2&cent;/4&cent;',
+    10: '5&cent;/10&cent;',
+    20: '10&cent;/20&cent;',
+    40: '20&cent;/40&cent;',
+    100: '50&cent;/$1'
+  };
   ret = '';
   ret += '<div id="' + snapjoinData.id + '" class="snapjoin-button">';
-  ret += '\t<button onclick="addToQueue()">' + snapjoinData.blinds + '</button>';
+  ret += '\t<button onclick="addToQueue(' + snapjoinData.bigBlind + ')">' + blindsFormat[snapjoinData.bigBlind] + '</button>';
   ret += '\t<div class="snapjoin-loading">';
   for(let i = 0; i < snapjoinData.playersNeeded; i++) {
     ret += '\t\t<div class="snapjoin-loading-cell' +
@@ -12,6 +24,27 @@ function createSnapjoinButton(snapjoinData) {
   ret += '</div>';
 
   return ret;
+}
+
+function addToQueue(bigBlind){
+  //upon click of button with bigBlind = big blind
+  const settings = getSettings();
+  xhr = new XMLHttpRequest();
+  xhr.open('POST', 'api/queue');
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+    } else {
+      console.error(xhr.status, xhr.responseText);
+    }
+  }
+  xhr.send(JSON.stringify(
+    {
+      type: settings.type,
+      format: settings.format,
+      table_size: 6,
+      big_blind: bigBlind
+    }
+  ));
 }
 
 /*
@@ -54,8 +87,7 @@ function loadGames(callback){
       //console.log(gamelist);
       callback(gamelist);
     } else {
-      console.log(xhr.status, xhr.responseText);
-      alert('loadGames failed');
+      console.error(xhr.status, xhr.responseText);
     }
   }
   xhr.send();
@@ -69,8 +101,7 @@ function loadQueue(callback){
       queue = JSON.parse(xhr.responseText);
       callback(queue);
     } else {
-      console.log(xhr.status, xhr.responseText);
-      alert('loadGames failed');
+      console.error(xhr.status, xhr.responseText);
     }
   }
   xhr.send();
@@ -79,10 +110,6 @@ function loadQueue(callback){
 function getSnapjoinData(queueData, gameList, settings) {
   //returns [{id, blinds, playersNeeded, playersWaiting}]
   const bigBlinds = [200, 400, 1000, 2000, 4000, 4, 10, 20, 40, 100];
-  const blindsformat = [
-    '$1/$2','$2/$4','$5/$10','$10/$20','$20/$40',
-    '2&cent;/4&cent;', '5&cent;/10&cent;', '10&cent;/20&cent;', '20&cent;/40&cent;', '50&cent;/$1'
-  ];
   const ret = [];
   let playersNeeded = Array(10).fill(-1);
   let playersWaiting = Array(10).fill(-1);
@@ -131,7 +158,7 @@ function getSnapjoinData(queueData, gameList, settings) {
      }
     }
   }
-  //if no one is in the queue and no tables are available
+//  if no one is in the queue and no tables are available
   for(let i = 0; i < playersNeeded.length; i++){
     if(playersNeeded[i] == -1){
       if (settings.sizes["2"]){
@@ -148,7 +175,7 @@ function getSnapjoinData(queueData, gameList, settings) {
   for(let i = 1; i <= 10; i++) {
     const buttonData = {};
     buttonData.id = 'snapjoin-button-' + i;
-    buttonData.blinds = blindsformat[i-1];
+    buttonData.bigBlind = bigBlinds[i-1];
     buttonData.playersNeeded = playersNeeded[i-1];
     buttonData.playersWaiting = playersWaiting[i-1];
     if (!window.blah) {
