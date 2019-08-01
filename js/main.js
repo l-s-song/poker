@@ -243,6 +243,7 @@ function getSettings() {
 }
 
 function populateGamesTable(games){
+  settings = getSettings();
   //type(table) = array {Game, Name, Players, Table Size, Blinds}
   let table = document.createElement("TABLE");
   let thead = table.createTHead();
@@ -255,18 +256,24 @@ function populateGamesTable(games){
     row.appendChild(td);
   }
   for(let element of games){
-    elem = [
-      element.type,
-      "NYC",
-      element.num_players,
-      element.table_size,
-      (element.big_blind/2) + "/" + element.big_blind
-    ];
-    let row = table.insertRow();
-    for(key of elem){
-      let cell = row.insertCell();
-      let textNode = document.createTextNode(key);
-      cell.appendChild(textNode);
+    if ((element.type == settings.type
+      || element.type == "any" )
+      && element.format == settings.format
+      && settings.sizes["" + element.table_size]
+    ){
+      elem = [
+        element.type,
+        "NYC",
+        element.num_players,
+        element.table_size,
+        (element.big_blind/2) + "/" + element.big_blind
+      ];
+      let row = table.insertRow();
+      for(key of elem){
+        let cell = row.insertCell();
+        let textNode = document.createTextNode(key);
+        cell.appendChild(textNode);
+      }
     }
   }
   document.getElementById("poker-tables").innerHTML =
@@ -281,6 +288,13 @@ function updateTable(){
       setTimeout(updateTable, 100);
     })
   });
+}
+
+function filterTable(){
+  input = document.getElementbyId("searchGame");
+  filter = input.value.toUpperCase();
+  table = document.getElementbyId("poker-tables");
+  filter 
 }
 
 //populateGamesTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
