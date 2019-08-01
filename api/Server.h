@@ -71,11 +71,33 @@ struct Table {
   string to_json();
 };
 
+struct player_settings {
+
+};
+
+struct queue_entry {
+  vector<game_type> types;
+  game_format format;
+  vector<int> table_sizes;
+};
+
+struct Player {
+  vector<queue_entry> queue_entries;
+  player_settings settings;
+  int chips;
+  int tokens;
+  vector<string> game_ids;
+  vector<string> table_ids;
+};
+
+map<string, Player*> all_players;
 map<string, Game*> all_games;
 map<string, Table*> all_tables;
+map<string, shared_mutex*> player_mutexes;
 map<string, shared_mutex*> game_mutexes;
 map<string, shared_mutex*> table_mutexes;
 map<string, string> session_id_to_player_id;
+shared_mutex all_players_mutex;
 shared_mutex all_games_mutex;
 shared_mutex all_tables_mutex;
 shared_mutex session_id_to_player_id_mutex;
