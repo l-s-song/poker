@@ -5,6 +5,12 @@
 #include <iostream>
 #include <thread>
 
+void init_server() {
+  srand(time(NULL));
+  game_settings qs = {nlhe, ring, 6, -1, 200};
+  queue[qs];
+}
+
 string get_player_id(string session_id) {
   session_id_to_player_id_mutex.lock_shared();
   string player_id = "";
@@ -35,12 +41,6 @@ string generate_id() {
   return to_string(generate_int());
 }
 
-void init_server() {
-  srand(time(NULL));
-  game_settings qs = {nlhe, ring, 6, -1, 200};
-  queue[qs];
-}
-
 string get_games() {
   string ret = "[\n";
   all_games_mutex.lock_shared();
@@ -61,6 +61,7 @@ string get_games() {
   return ret;
 }
 
+
 string get_queue() {
   string s = "[\n";
   for(auto&& [settings, player_ids] : queue){
@@ -71,6 +72,151 @@ string get_queue() {
   }
   s += "]";
   return s;
+}
+
+// Moves players from the queues to existing games, and then potentially makes a new game if the queue is large enough
+// queue_mutex must be locked in order to call this
+void clear_queues() {
+  //fill existing nonempty tables
+  all_games_mutex.lock_shared();
+  for(auto& elem : all_games){
+    const string& game_id = elem.first;
+    game_mutexes[game_id]->lock();
+    Game* g = elem.second;
+    game_settings settings = g->settings;
+    vector<string>& specific_queue = queue[settings];
+    while( specific_queue.size() > 0
+        && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
+    ) {
+      int new_player_index = -1;
+      for (int i = 0; i < specific_queue.size(); i++) {
+        string& player_id = specific_queue[i];
+        bool already_playing = false;
+        for (string& id : g->player_ids) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        for (string& id : g->waiting_players) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        for (string& id : g->leaving_players) {
+          if (id == player_id) {
+            already_playing = true;
+          }
+        }
+        if (!already_playing) {
+          new_player_index = i;
+          break;
+        }
+      }
+      if (new_player_index == -1) {
+        // Everyone in the queue, is already sitting at this table
+        break;
+      }
+      string& player_id = queue[settings][new_player_index];
+      queue[settings].erase(queue[settings].begin() + new_player_index);
+      g->waiting_players.push_back(player_id);
+    }
+    game_mutexes[game_id]->unlock();
+  }
+  all_games_mutex.unlock_shared();
+  // Populating new tables
+  for(auto& specific_queue : queue) {
+    game_settings settings = specific_queue.first;
+    if (settings.format != ring) {
+      throw "We haven't coded tournaments yet";
+    }
+    vector<string>& player_ids = specific_queue.second;
+    // Keep trying to make new tables, if possible
+    while(true){
+      // Collect player_ids to potentially make a new table
+      vector<string> new_table_player_ids;
+      vector<string> old_queue = player_ids;
+      for(int i = 0; i < player_ids.size(); i++) {
+        if (new_table_player_ids.size() == settings.table_size) {
+          break;
+        }
+        string& player_id = player_ids[i];
+        bool is_already_used = false;
+        for (string& new_table_player_id : new_table_player_ids) {
+          if (new_table_player_id == player_id) {
+            is_already_used = true;
+            break;
+          }
+        }
+        if (!is_already_used) {
+          new_table_player_ids.push_back(player_id);
+          player_ids.erase(player_ids.begin() + i);
+          i--;
+        }
+      }
+      if (new_table_player_ids.size() <= settings.table_size / 2) {
+        // New table is too small to create, so stop trying to make new tablesbl
+        for(string& new_table_player_id : new_table_player_ids) {
+          player_ids.push_back(new_table_player_id);
+        }
+        break;
+      }
+      // Generate table and game
+      string table_id = generate_id();
+      string game_id = generate_id();
+      HandSimulation hs(settings.big_blind, 0, vector<int>(new_table_player_ids.size(), 100*settings.big_blind));
+      hs.initBettingRound();
+      Table* table = new Table{table_id, game_id, new_table_player_ids, hs};
+      Game* game = new Game(game_id, "NYC", settings, {table_id}, new_table_player_ids);
+
+      all_tables_mutex.lock();
+      all_tables[table_id] = table;
+      table_mutexes[table_id] = new shared_mutex;
+      all_tables_mutex.unlock();
+
+      all_games_mutex.lock();
+      all_games[game_id] = game;
+      game_mutexes[game_id] = new shared_mutex;
+      all_games_mutex.unlock();
+    }
+  }
+}
+
+string add_to_queue(const string& player_id, const game_settings& settings) {
+  string ret = "{}";
+  queue_mutex.lock();
+  if (queue.count(settings)) {
+    vector<string>& player_ids = queue[settings];
+    player_ids.push_back(player_id);
+    clear_queues();
+  } else {
+    ret = "";
+  }
+  queue_mutex.unlock();
+  return ret;
+}
+
+string add_to_queue(string session_id, string type, string format, int table_size, int buy_in_or_big_blind) {
+  //player joining game
+  string player_id = get_player_id(session_id);
+  if (player_id == "") {
+    return error_json("Player not logged in");
+  }
+  string invalid_settings = error_json("A queue with those settings does not exist");
+  if (!is_game_type(type) || !is_game_format(format)) {
+    return invalid_settings;
+  }
+  game_settings settings = {to_game_type(type), to_game_format(format), table_size, -1, -1};
+  if (settings.format == ring) {
+    settings.big_blind = buy_in_or_big_blind;
+  } else {
+    settings.buy_in = buy_in_or_big_blind;
+  }
+  string ret = add_to_queue(player_id, settings);
+  if (ret == "") {
+    return invalid_settings;
+  } else {
+    return ret;
+  }
 }
 
 // requires: tables[table_id].hand_sim.isHandOver()
@@ -121,6 +267,9 @@ void start_new_hand(string table_id) {
     hs.initBettingRound();
     table->hand_sim = move(hs);
   } else {
+    for(string& player_id : player_ids) {
+      add_to_queue(player_id, game->settings);
+    }
     all_games.erase(game_id);
     all_tables.erase(table_id);
     delete table;
@@ -248,120 +397,6 @@ string player_act(string session_id, string table_id, string action, int bet_siz
     table_mutexes[table_id]->unlock();
   }
   all_tables_mutex.unlock_shared();
-  return ret;
-}
-
-// queue_mutex must be locked in order to call this
-void create_tables_from_queues() {
-  //fill existing nonempty tables
-  all_games_mutex.lock_shared();
-  for(auto& elem : all_games){
-    const string& game_id = elem.first;
-    game_mutexes[game_id]->lock();
-    Game* g = elem.second;
-    game_settings settings = g->settings;
-    vector<string>& specific_queue = queue[settings];
-    while( specific_queue.size() > 0
-        && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
-    ) {
-      int new_player_index = -1;
-      for (int i = 0; i < specific_queue.size(); i++) {
-        string& player_id = specific_queue[i];
-        bool already_playing = false;
-        for (string& id : g->player_ids) {
-          if (id == player_id) {
-            already_playing = true;
-          }
-        }
-        for (string& id : g->waiting_players) {
-          if (id == player_id) {
-            already_playing = true;
-          }
-        }
-        for (string& id : g->leaving_players) {
-          if (id == player_id) {
-            already_playing = true;
-          }
-        }
-        if (!already_playing) {
-          new_player_index = i;
-          break;
-        }
-      }
-      if (new_player_index == -1) {
-        // Everyone in the queue, is already sitting at this table
-        break;
-      }
-      string& player_id = queue[settings][new_player_index];
-      queue[settings].erase(queue[settings].begin() + new_player_index);
-      g->waiting_players.push_back(player_id);
-    }
-    game_mutexes[game_id]->unlock();
-  }
-  all_games_mutex.unlock_shared();
-  //fill existing nonempty tables before populating new tables
-  for(auto& specific_queue : queue) {
-    game_settings settings = specific_queue.first;
-    if (settings.format != ring) {
-      throw "We haven't coded tournaments yet";
-    }
-    vector<string>& player_ids = specific_queue.second;
-    while(player_ids.size() > settings.table_size/2){
-      //make new game
-      vector<string> new_table_player_ids;
-      while (new_table_player_ids.size() < settings.table_size && player_ids.size() > 0) {
-        new_table_player_ids.push_back(player_ids.back());
-        player_ids.pop_back();
-      }
-      string table_id = generate_id();
-      string game_id = generate_id();
-      HandSimulation hs(settings.big_blind, 0, vector<int>(new_table_player_ids.size(), 100*settings.big_blind));
-      hs.initBettingRound();
-      Table* table = new Table{table_id, game_id, new_table_player_ids, hs};
-      Game* game = new Game(game_id, "NYC", settings, {table_id}, new_table_player_ids);
-
-      all_tables_mutex.lock();
-      all_tables[table_id] = table;
-      table_mutexes[table_id] = new shared_mutex;
-      all_tables_mutex.unlock();
-
-      all_games_mutex.lock();
-      all_games[game_id] = game;
-      game_mutexes[game_id] = new shared_mutex;
-      all_games_mutex.unlock();
-
-      player_ids.clear();
-    }
-  }
-}
-
-string add_to_queue(string session_id, string type, string format, int table_size, int buy_in_or_big_blind) {
-  //player joining game
-  string player_id = get_player_id(session_id);
-  if (player_id == "") {
-    return error_json("Player not logged in");
-  }
-  string invalid_settings = error_json("A queue with those settings does not exist");
-  if (!is_game_type(type) || !is_game_format(format)) {
-    return invalid_settings;
-  }
-
-  string ret = "{}";
-  game_settings settings = {to_game_type(type), to_game_format(format), table_size, -1, -1};
-  if (settings.format == ring) {
-    settings.big_blind = buy_in_or_big_blind;
-  } else {
-    settings.buy_in = buy_in_or_big_blind;
-  }
-  queue_mutex.lock();
-  if (queue.count(settings)) {
-    vector<string>& player_ids = queue[settings];
-    player_ids.push_back(player_id);
-    create_tables_from_queues();
-  } else {
-    ret = invalid_settings;
-  }
-  queue_mutex.unlock();
   return ret;
 }
 
