@@ -9,7 +9,7 @@ document.body.appendChild(script);
 function test() {
   for(let i = 0; i < 20; i++){
     $.get("/api/login/" + Math.floor(Math.random()*1000000), console.log)
-    $.post("/api/queue", '{"type": "nlhe", "format": "ring", "table_size": 6, "big_blind":  2}',
+    $.post("/api/queue", '{"type": "nlhe", "format": "ring", "table_size": 6, "big_blind":  200}',
       console.log)
   }
   get_games();

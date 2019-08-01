@@ -1,7 +1,7 @@
 function createSnapjoinButton(snapjoinData) {
   ret = '';
   ret += '<div id="' + snapjoinData.id + '" class="snapjoin-button">';
-  ret += '\t<button>' + snapjoinData.blinds + '</button>';
+  ret += '\t<button onclick="addToQueue()">' + snapjoinData.blinds + '</button>';
   ret += '\t<div class="snapjoin-loading">';
   for(let i = 0; i < snapjoinData.playersNeeded; i++) {
     ret += '\t\t<div class="snapjoin-loading-cell' +
@@ -28,8 +28,8 @@ function createSnapjoinButton(snapjoinData) {
 </div>
 */
 
-function populateRows() {
-  const snapjoinData = getSnapjoinData(getSettings());
+function populateSnapjoin(queueData, gameList) {
+  const snapjoinData = getSnapjoinData(queueData, gameList, getSettings());
   let row1 = document.getElementById('snapjoin-buttons-1');
   row1.innerHTML = "";
   for (let i = 0; i < 5; i++) {
@@ -51,6 +51,7 @@ function loadGames(callback){
   xhr.onload = function() {
     if (xhr.status === 200) {
       gamelist = JSON.parse(xhr.responseText);
+      //console.log(gamelist);
       callback(gamelist);
     } else {
       console.log(xhr.status, xhr.responseText);
@@ -60,20 +61,103 @@ function loadGames(callback){
   xhr.send();
 }
 
-function getSnapjoinData(settings) {
-  const blinds = [
-                    '$1/$2','$2/$4','$5/$10','$10/$20','$20/$40',
-                    '2&cent;/4&cent;', '5&cent;/10&cent;', '10&cent;/20&cent;', '20&cent;/40&cent;', '50&cent;/$1'
-                 ];
+function loadQueue(callback){
+  xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/queue');
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      queue = JSON.parse(xhr.responseText);
+      callback(queue);
+    } else {
+      console.log(xhr.status, xhr.responseText);
+      alert('loadGames failed');
+    }
+  }
+  xhr.send();
+}
+
+function getSnapjoinData(queueData, gameList, settings) {
+  //returns [{id, blinds, playersNeeded, playersWaiting}]
+  const bigBlinds = [200, 400, 1000, 2000, 4000, 4, 10, 20, 40, 100];
+  const blindsformat = [
+    '$1/$2','$2/$4','$5/$10','$10/$20','$20/$40',
+    '2&cent;/4&cent;', '5&cent;/10&cent;', '10&cent;/20&cent;', '20&cent;/40&cent;', '50&cent;/$1'
+  ];
   const ret = [];
+  let playersNeeded = Array(10).fill(-1);
+  let playersWaiting = Array(10).fill(-1);
+  if (!window.firstblah)
+    console.log(settings);
+  //get game that can be joined
+  for(let i = 0; i < gameList.length; i++){
+    for(let j = 0; j < bigBlinds.length; j++){
+      if (!window.firstblah)
+          console.log(gameList);
+      if(playersNeeded[j] == -1
+      && gameList[i].big_blind == bigBlinds[j]
+      && settings.format == gameList[i].format
+      && (settings.type == "any" || settings.type == gameList[i].type)
+      && settings.sizes["" + gameList[i].table_size]
+      && gameList[i].num_players < gameList[i].table_size
+      ){
+        if (!window.firstblah)
+          console.log(gameList[i]);
+        playersNeeded[j] = Math.floor(gameList[i].table_size/2) + 1;
+        playersWaiting[j] = gameList[i].num_players;
+      }
+    }
+  }
+  //look through queue for players wanting the same settings
+  for(let i = 0; i < playersNeeded.length; i++){
+    for (let j = 0; j < queueData.length; j++){
+      if((settings.type == "any"
+       || settings.type == queueData[j].type)
+       && settings.format == queueData[j].format
+       && settings.sizes[queueData[j].table_size]
+       && bigBlinds[i] == queueData[j].big_blind
+     ){
+       queuePlayersNeeded = Math.floor(queueData[j].table_size/2) + 1;
+       if (playersNeeded[i] == -1){
+         playersNeeded[i] = queuePlayersNeeded;
+         playersWaiting[i] = queueData[j].num_players;
+       } else {
+         if ((queuePlayersNeeded - queueData[j].num_players)
+           < (playersNeeded[i] - playersWaiting[i])
+         ){
+           playersNeeded[i] = queuePlayersNeeded;
+           playersWaiting[i] = queueData[j].num_players;
+         }
+       }
+     }
+    }
+  }
+  //if no one is in the queue and no tables are available
+  for(let i = 0; i < playersNeeded.length; i++){
+    if(playersNeeded[i] == -1){
+      if (settings.sizes["2"]){
+        playersNeeded[i] = 1;
+      } else if (settings.sizes["6"]){
+        playersNeeded[i] = 4;
+      } else {
+        playersNeeded[i] = 5;
+      }
+      playersWaiting[i] = 0;
+    }
+  }
+
   for(let i = 1; i <= 10; i++) {
     const buttonData = {};
     buttonData.id = 'snapjoin-button-' + i;
-    buttonData.blinds = blinds[i-1];
-    buttonData.playersNeeded = Math.floor(Math.random() * 3 + 4);
-    buttonData.playersWaiting = Math.floor(Math.random() * buttonData.playersNeeded);
+    buttonData.blinds = blindsformat[i-1];
+    buttonData.playersNeeded = playersNeeded[i-1];
+    buttonData.playersWaiting = playersWaiting[i-1];
+    if (!window.blah) {
+      console.log(buttonData);
+      window.blah = true;
+    }
     ret.push(buttonData);
   }
+  window.firstblah = true;
   return ret;
 }
 
@@ -83,53 +167,49 @@ function updateSettings() {
     document.getElementById("snapjoin-section").classList.add("hidden");
   } else {
     document.getElementById("snapjoin-section").classList.remove("hidden");
-    populateRows();
   }
+  // TODO fix game table and snapjoin buttons
 }
 
 function getSettings() {
-  games = {
-    nlhe: true,
-    plo: true,
-  };
-  if (document.getElementById('filter-game-nlhe').checked) {
-    games.plo = false;
-  } else if (document.getElementById('filter-game-plo').checked) {
-    games.nlhe = false;
-  }
-
-  let format = {
-    ring: false,
-    sitngo: false,
-    tournament: false,
-  }
-
-  if (document.getElementById('filter-format-ring').checked) {
-    format.ring = true;
-  } else if (document.getElementById('filter-format-sitngo').checked) {
-    format.sitngo = true;
+  let type = "";
+  const isplo = document.getElementById('filter-game-plo').checked;
+  const isnlhe = document.getElementById('filter-game-nlhe').checked;
+  if (isplo && isnlhe){
+    type = "any";
+  } else if (isplo){
+    type = "plo";
   } else {
-    format.tournament = true;
+    type = "nlhe";
+  }
+
+  let format = "";
+  if (document.getElementById('filter-format-ring').checked) {
+    format = "ring";
+  } else if (document.getElementById('filter-format-sitngo').checked) {
+    format = "sitngo";
+  } else {
+    format = "tournament";
   }
 
   let sizes = {
-    "headsup": false,
-    "sixmax": false,
-    "fullring": false,
+    "2": false,
+    "6": false,
+    "9": false,
   };
 
   if (document.getElementById('filter-size-headsup').checked) {
-    sizes.headsup = true;
+    sizes["2"] = true;
   }
   if (document.getElementById('filter-size-6max').checked) {
-    sizes.sixmax = true;
+    sizes["6"] = true;
   }
   if (document.getElementById('filter-size-fullring').checked) {
-    sizes.fullring = true;
+    sizes["9"] = true;
   }
 
   return {
-    games,
+    type,
     format,
     sizes,
   };
@@ -168,11 +248,16 @@ function populateTable(table){
 }
 
 function updateTable(){
-  loadGames(populateTable);
+  loadGames(function(games) {
+    populateTable(games);
+    loadQueue(function(queue) {
+      populateSnapjoin(queue, games);
+      setTimeout(updateTable, 100);
+    })
+  });
 }
 
-populateRows();
 //populateTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);
-setInterval(updateTable, 300);
+updateTable();

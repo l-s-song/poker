@@ -43,6 +43,20 @@ string get_session_id(shared_ptr<HttpServer::Request> request) {
   }
 }
 
+void ok(shared_ptr<HttpServer::Response>& response, const string& content) {
+  *response << "HTTP/1.1 200 OK\r\n"
+            << "Content-Length: " << content.length() << "\r\n"
+            << "\r\n"
+            << content;
+}
+
+void bad(shared_ptr<HttpServer::Response>& response, const string& error) {
+  *response << "HTTP/1.1 400 Bad Request\r\n"
+            << "Content-Length: " << error.size() << "\r\n"
+            << "\r\n"
+            << error;
+}
+
 int main(){
   cout << "Server Starting" << endl;
   HttpServer server;
@@ -50,36 +64,13 @@ int main(){
 
   init_server();
 
-  server.resource["^/api/login/([0-9]+)$"]["GET"] = [](
-    shared_ptr<HttpServer::Response> response,
-    shared_ptr<HttpServer::Request> request
-  ) {
-    string session_id = get_session_id(request);
-    if (session_id == "") {
-      session_id = generate_id();
-    }
-    string player_id = request->path_match[1].str();
-    set_player_id(session_id, player_id);
-    string content = "{}";
-
-    *response << "HTTP/1.1 200 OK\r\n"
-              << "Set-Cookie: " << "session_id=" << session_id << "; path=/" << "\r\n"
-              << "Content-Length: " << content.size() << "\r\n"
-              << "\r\n"
-              << content;
-  };
-
   server.resource["^/api/games$"]["GET"] = [](
     shared_ptr<HttpServer::Response> response,
     shared_ptr<HttpServer::Request> request
   ) {
     string games_json = get_games();
 
-    *response << "HTTP/1.1 200 OK\r\n"
-              << "Access-Control-Allow-Origin: " << "*" << "\r\n"
-              << "Content-Length: " << games_json.size() << "\r\n"
-              << "\r\n"
-              << games_json;
+    ok(response, games_json);
   };
 
   server.resource["^/api/game/([0-9]+)$"]["GET"] = [](
@@ -89,10 +80,7 @@ int main(){
     string id = request->path_match[1].str();
     string game_json = get_game_from_id(id);
 
-    *response << "HTTP/1.1 200 OK\r\n"
-              << "Content-Length: " << game_json.size() << "\r\n"
-              << "\r\n"
-              << game_json;
+    ok(response, game_json);
   };
 
   server.resource["^/api/table/([0-9]+)$"]["GET"] = [](
@@ -102,10 +90,15 @@ int main(){
     string id = request->path_match[1].str();
     string table_json = get_table_from_id(id);
 
-    *response << "HTTP/1.1 200 OK\r\n"
-              << "Content-Length: " << table_json.size() << "\r\n"
-              << "\r\n"
-              << table_json;
+    ok(response, table_json);
+  };
+
+  server.resource["^/api/queue$"]["GET"] = [](
+    shared_ptr<HttpServer::Response> response,
+    shared_ptr<HttpServer::Request> request
+  ) {
+    string queue = get_queue();
+    ok(response, queue);
   };
 
   server.resource["^/api/queue$"]["POST"] = [](
@@ -127,15 +120,9 @@ int main(){
       }
       string content = add_to_queue(session_id, type, format, table_size, buy_in_or_big_blind);
 
-      *response << "HTTP/1.1 200 OK\r\n"
-                << "Content-Length: " << content.length() << "\r\n"
-                << "\r\n"
-                << content;
+      ok(response, content);
     } catch(const exception &e) {
-      *response << "HTTP/1.1 400 Bad Request\r\n"
-                << "Content-Length: " << strlen(e.what()) << "\r\n"
-                << "\r\n"
-                << e.what();
+      bad(response, "Malformed JSON");
     }
   };
 
@@ -152,15 +139,9 @@ int main(){
       int bet_size = pt.get<int>("bet_size");
       string content = player_act(session_id, table_id, action, bet_size);
 
-      *response << "HTTP/1.1 200 OK\r\n"
-                << "Content-Length: " << content.length() << "\r\n"
-                << "\r\n"
-                << content;
+      ok(response, content);
     } catch(const exception &e) {
-      *response << "HTTP/1.1 400 Bad Request\r\n"
-                << "Content-Length: " << strlen(e.what()) << "\r\n"
-                << "\r\n"
-                << e.what();
+      bad(response, "Malformed JSON");
     }
   };
 
@@ -175,16 +156,29 @@ int main(){
       string game_id = pt.get<string>("game_id");
       string content = player_leave(session_id, game_id);
 
-      *response << "HTTP/1.1 200 OK\r\n"
-                << "Content-Length: " << content.length() << "\r\n"
-                << "\r\n"
-                << content;
+      ok(response, content);
     } catch(const exception &e) {
-      *response << "HTTP/1.1 400 Bad Request\r\n"
-                << "Content-Length: " << strlen(e.what()) << "\r\n"
-                << "\r\n"
-                << e.what();
+      bad(response, "Malformed JSON");
     }
+  };
+
+  server.resource["^/api/login/([0-9]+)$"]["GET"] = [](
+    shared_ptr<HttpServer::Response> response,
+    shared_ptr<HttpServer::Request> request
+  ) {
+    string session_id = get_session_id(request);
+    if (session_id == "") {
+      session_id = generate_id();
+    }
+    string player_id = request->path_match[1].str();
+    set_player_id(session_id, player_id);
+    string content = "{}";
+
+    *response << "HTTP/1.1 200 OK\r\n"
+              << "Set-Cookie: " << "session_id=" << session_id << "; path=/" << "\r\n"
+              << "Content-Length: " << content.size() << "\r\n"
+              << "\r\n"
+              << content;
   };
 
   server.start();

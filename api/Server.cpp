@@ -37,7 +37,7 @@ string generate_id() {
 
 void init_server() {
   srand(time(NULL));
-  game_settings qs = {nlhe, ring, 6, -1, 2};
+  game_settings qs = {nlhe, ring, 6, -1, 200};
   queue[qs];
 }
 
@@ -59,6 +59,18 @@ string get_games() {
   all_games_mutex.unlock_shared();
   ret += "]\n";
   return ret;
+}
+
+string get_queue() {
+  string s = "[\n";
+  for(auto&& [settings, player_ids] : queue){
+    s += "\t{\n";
+    s += to_string_game_setting(settings, 1);
+    s += format_json("num_players", player_ids.size(), 2, false);
+    s += "\t}\n";
+  }
+  s += "]";
+  return s;
 }
 
 // requires: tables[table_id].hand_sim.isHandOver()
