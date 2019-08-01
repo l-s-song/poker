@@ -215,10 +215,10 @@ function getSettings() {
   };
 }
 
-function populateTable(table){
+function populateGamesTable(games){
   //type(table) = array {Game, Name, Players, Table Size, Blinds}
-  var newtable = document.createElement("TABLE");
-  let thead = newtable.createTHead();
+  let table = document.createElement("TABLE");
+  let thead = table.createTHead();
   let row = thead.insertRow();
   const data = ["Game", "Name", "Players", "Table Size", "Blinds"];
   for(let key of data){
@@ -227,16 +227,15 @@ function populateTable(table){
     td.appendChild(textNode);
     row.appendChild(td);
   }
-  for(let element of table){
+  for(let element of games){
     elem = [
       element.type,
       "NYC",
       element.num_players,
       element.table_size,
       (element.big_blind/2) + "/" + element.big_blind
-      //\u00A2
     ];
-    let row = newtable.insertRow();
+    let row = table.insertRow();
     for(key of elem){
       let cell = row.insertCell();
       let textNode = document.createTextNode(key);
@@ -244,7 +243,7 @@ function populateTable(table){
     }
   }
   document.getElementById("poker-tables").innerHTML =
-    newtable.innerHTML;
+    table.innerHTML;
 }
 
 function updateTable(){

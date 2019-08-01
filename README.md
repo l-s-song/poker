@@ -23,7 +23,7 @@ First, we install the dependencies
 Now, we link the git directory to apache2's host location.
 ```
 sudo rm -r /var/www/html
-sudo ln -s . /var/www/html
+sudo ln -s $(pwd) /var/www/html
 ```
 
 Inside of `etc/apache2/apache2.conf`, we add the line
