@@ -14,8 +14,8 @@ function createSnapjoinButton(snapjoinData) {
   ret = '';
   ret += '<div id="' + snapjoinData.id + '" class="snapjoin-button">';
   ret += '\t<button onclick="addToQueue(' + snapjoinData.bigBlind + ')">' + blindsFormat[snapjoinData.bigBlind] + '</button>';
-  ret += '\t<div class="snapjoin-loading">';
-  for(let i = 0; i < snapjoinData.playersNeeded; i++) {
+  ret += '\t<div id="' + snapjoinData.id + '-loading" class="snapjoin-loading">';
+  for(let i = 0; i < snapjoinData.playersNeeded - 1; i++) {
     ret += '\t\t<div class="snapjoin-loading-cell' +
       (i < snapjoinData.playersWaiting ? ' active' : '')
       + '"></div>';
@@ -24,6 +24,17 @@ function createSnapjoinButton(snapjoinData) {
   ret += '</div>';
 
   return ret;
+}
+
+function updateSnapjoinLoadingBar(id, playersWaiting, playersNeeded) {
+  loaderHTML = '';
+  for(let i = 0; i < playersNeeded - 1; i++) {
+    loaderHTML += '\t\t<div class="snapjoin-loading-cell' +
+      (i < playersWaiting ? ' active' : '')
+      + '"></div>';
+  }
+  let loader = document.getElementById(id + '-loading');
+  loader.innerHTML = loaderHTML;
 }
 
 function addToQueue(bigBlind){
@@ -61,17 +72,26 @@ function addToQueue(bigBlind){
 </div>
 */
 
-function populateSnapjoin(queueData, gameList) {
-  const snapjoinData = getSnapjoinData(queueData, gameList, getSettings());
-  let row1 = document.getElementById('snapjoin-buttons-1');
-  row1.innerHTML = "";
+function populateSnapjoin() {
+  const snapjoinData = getSnapjoinData();
+  let row = "";
   for (let i = 0; i < 5; i++) {
-    row1.innerHTML += createSnapjoinButton(snapjoinData[i]);
+    row += createSnapjoinButton(snapjoinData[i]);
+  }
+  let row1 = document.getElementById('snapjoin-buttons-1');
+  row1.innerHTML = row;
+  row = "";
+  for (let i = 5; i < 10; i++) {
+    row += createSnapjoinButton(snapjoinData[i]);
   }
   let row2 = document.getElementById('snapjoin-buttons-2');
-  row2.innerHTML = "";
-  for (let i = 5; i < 10; i++) {
-    row2.innerHTML += createSnapjoinButton(snapjoinData[i]);
+  row2.innerHTML = row;
+}
+
+function updateSnapjoin(queueData, gameList) {
+  const snapjoinData = getSnapjoinData(queueData, gameList);
+  for(let buttonData of snapjoinData) {
+    updateSnapjoinLoadingBar(buttonData.id, buttonData.playersWaiting, buttonData.playersNeeded);
   }
 }
 
@@ -88,6 +108,7 @@ function loadGames(callback){
       callback(gamelist);
     } else {
       console.error(xhr.status, xhr.responseText);
+      callback();
     }
   }
   xhr.send();
@@ -102,60 +123,59 @@ function loadQueue(callback){
       callback(queue);
     } else {
       console.error(xhr.status, xhr.responseText);
+      callback();
     }
   }
   xhr.send();
 }
 
-function getSnapjoinData(queueData, gameList, settings) {
+function getSnapjoinData(queueData, gameList) {
+  const settings = getSettings();
   //returns [{id, blinds, playersNeeded, playersWaiting}]
   const bigBlinds = [200, 400, 1000, 2000, 4000, 4, 10, 20, 40, 100];
   const ret = [];
   let playersNeeded = Array(10).fill(-1);
   let playersWaiting = Array(10).fill(-1);
-  if (!window.firstblah)
-    console.log(settings);
-  //get game that can be joined
-  for(let i = 0; i < gameList.length; i++){
-    for(let j = 0; j < bigBlinds.length; j++){
-      if (!window.firstblah)
-          console.log(gameList);
-      if(playersNeeded[j] == -1
-      && gameList[i].big_blind == bigBlinds[j]
-      && settings.format == gameList[i].format
-      && (settings.type == "any" || settings.type == gameList[i].type)
-      && settings.sizes["" + gameList[i].table_size]
-      && gameList[i].num_players < gameList[i].table_size
-      ){
-        if (!window.firstblah)
-          console.log(gameList[i]);
-        playersNeeded[j] = Math.floor(gameList[i].table_size/2) + 1;
-        playersWaiting[j] = gameList[i].num_players;
+  
+  if (queueData && gameList) {
+    //get game that can be joined
+    for(let i = 0; i < gameList.length; i++){
+      for(let j = 0; j < bigBlinds.length; j++){
+        if(playersNeeded[j] == -1
+        && gameList[i].big_blind == bigBlinds[j]
+        && settings.format == gameList[i].format
+        && (settings.type == "any" || settings.type == gameList[i].type)
+        && settings.sizes["" + gameList[i].table_size]
+        && gameList[i].num_players < gameList[i].table_size
+        ){
+          playersNeeded[j] = Math.floor(gameList[i].table_size/2) + 1;
+          playersWaiting[j] = gameList[i].num_players;
+        }
       }
     }
-  }
-  //look through queue for players wanting the same settings
-  for(let i = 0; i < playersNeeded.length; i++){
-    for (let j = 0; j < queueData.length; j++){
-      if((settings.type == "any"
-       || settings.type == queueData[j].type)
-       && settings.format == queueData[j].format
-       && settings.sizes[queueData[j].table_size]
-       && bigBlinds[i] == queueData[j].big_blind
-     ){
-       queuePlayersNeeded = Math.floor(queueData[j].table_size/2) + 1;
-       if (playersNeeded[i] == -1){
-         playersNeeded[i] = queuePlayersNeeded;
-         playersWaiting[i] = queueData[j].num_players;
-       } else {
-         if ((queuePlayersNeeded - queueData[j].num_players)
-           < (playersNeeded[i] - playersWaiting[i])
-         ){
-           playersNeeded[i] = queuePlayersNeeded;
-           playersWaiting[i] = queueData[j].num_players;
-         }
-       }
-     }
+    //look through queue for players wanting the same settings
+    for(let i = 0; i < playersNeeded.length; i++){
+      for (let j = 0; j < queueData.length; j++){
+        if((settings.type == "any"
+          || settings.type == queueData[j].type)
+          && settings.format == queueData[j].format
+          && settings.sizes[queueData[j].table_size]
+          && bigBlinds[i] == queueData[j].big_blind
+        ){
+          queuePlayersNeeded = Math.floor(queueData[j].table_size/2) + 1;
+          if (playersNeeded[i] == -1){
+            playersNeeded[i] = queuePlayersNeeded;
+            playersWaiting[i] = queueData[j].num_players;
+          } else {
+            if ((queuePlayersNeeded - queueData[j].num_players)
+              < (playersNeeded[i] - playersWaiting[i])
+            ){
+              playersNeeded[i] = queuePlayersNeeded;
+              playersWaiting[i] = queueData[j].num_players;
+            }
+          }
+        }
+      }
     }
   }
 //  if no one is in the queue and no tables are available
@@ -165,7 +185,7 @@ function getSnapjoinData(queueData, gameList, settings) {
         playersNeeded[i] = 1;
       } else if (settings.sizes["6"]){
         playersNeeded[i] = 4;
-      } else {
+      } else if (settings.sizes["9"]) {
         playersNeeded[i] = 5;
       }
       playersWaiting[i] = 0;
@@ -184,7 +204,6 @@ function getSnapjoinData(queueData, gameList, settings) {
     }
     ret.push(buttonData);
   }
-  window.firstblah = true;
   return ret;
 }
 
@@ -195,6 +214,7 @@ function updateSettings() {
   } else {
     document.getElementById("snapjoin-section").classList.remove("hidden");
   }
+  populateSnapjoin();
   // TODO fix game table and snapjoin buttons
 }
 
@@ -281,11 +301,22 @@ function populateGamesTable(games){
 }
 
 function updateTable(){
+  if (window.stopUpdating) {
+    return;
+  }
   loadGames(function(games) {
+    if (!games) {
+      updateTable();
+      return;
+    }
     populateGamesTable(games);
     loadQueue(function(queue) {
-      populateSnapjoin(queue, games);
-      setTimeout(updateTable, 100);
+      if (!queue) {
+        updateTable();
+        return;
+      }
+      updateSnapjoin(queue, games);
+      setTimeout(updateTable, 400);
     })
   });
 }
@@ -301,3 +332,5 @@ function filterTable(){
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);
 updateTable();
+populateSnapjoin();
+

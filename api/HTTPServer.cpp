@@ -45,6 +45,7 @@ string get_session_id(shared_ptr<HttpServer::Request> request) {
 
 void ok(shared_ptr<HttpServer::Response>& response, const string& content) {
   *response << "HTTP/1.1 200 OK\r\n"
+            << "Content-Type: application/json\r\n"
             << "Content-Length: " << content.length() << "\r\n"
             << "\r\n"
             << content;
@@ -52,6 +53,7 @@ void ok(shared_ptr<HttpServer::Response>& response, const string& content) {
 
 void bad(shared_ptr<HttpServer::Response>& response, const string& error) {
   *response << "HTTP/1.1 400 Bad Request\r\n"
+            << "Content-Type: application/json\r\n"
             << "Content-Length: " << error.size() << "\r\n"
             << "\r\n"
             << error;
