@@ -79,7 +79,7 @@ map<string, string> session_id_to_player_id;
 shared_mutex all_games_mutex;
 shared_mutex all_tables_mutex;
 shared_mutex session_id_to_player_id_mutex;
-mutex queue_mutex;
+shared_mutex queue_mutex;
 map<game_settings, vector<string>> queue;
 
 #endif

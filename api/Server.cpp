@@ -82,6 +82,8 @@ string get_games() {
 string get_queues() {
   string s = "[\n";
   bool first = true;
+
+  queue_mutex.lock_shared();
   for(auto&& [settings, player_ids] : queue){
     if (first) {
       s += "\t{\n";
@@ -89,10 +91,12 @@ string get_queues() {
       s += ",\n\t{\n";
     }
     s += to_string_game_setting(settings, 1);
-    s += format_json("num_players", player_ids.size(), 2, false);
+    set<string> unique_player_ids(player_ids.begin(), player_ids.end());
+    s += format_json("num_players", unique_player_ids.size(), 2, false);
     s += "\t}";
     first = false;
   }
+  queue_mutex.unlock_shared();
   if (!first) {
     s += "\n";
   }
