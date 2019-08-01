@@ -136,7 +136,7 @@ function getSnapjoinData(queueData, gameList) {
   const ret = [];
   let playersNeeded = Array(10).fill(-1);
   let playersWaiting = Array(10).fill(-1);
-  
+
   if (queueData && gameList) {
     //get game that can be joined
     for(let i = 0; i < gameList.length; i++){
@@ -145,7 +145,7 @@ function getSnapjoinData(queueData, gameList) {
         && gameList[i].big_blind == bigBlinds[j]
         && settings.format == gameList[i].format
         && (settings.type == "any" || settings.type == gameList[i].type)
-        && settings.sizes["" + gameList[i].table_size]
+        && settings.table_size["" + gameList[i].table_size]
         && gameList[i].num_players < gameList[i].table_size
         ){
           playersNeeded[j] = Math.floor(gameList[i].table_size/2) + 1;
@@ -159,7 +159,7 @@ function getSnapjoinData(queueData, gameList) {
         if((settings.type == "any"
           || settings.type == queueData[j].type)
           && settings.format == queueData[j].format
-          && settings.sizes[queueData[j].table_size]
+          && settings.table_size[queueData[j].table_size]
           && bigBlinds[i] == queueData[j].big_blind
         ){
           queuePlayersNeeded = Math.floor(queueData[j].table_size/2) + 1;
@@ -181,11 +181,11 @@ function getSnapjoinData(queueData, gameList) {
 //  if no one is in the queue and no tables are available
   for(let i = 0; i < playersNeeded.length; i++){
     if(playersNeeded[i] == -1){
-      if (settings.sizes["2"]){
+      if (settings.table_size["2"]){
         playersNeeded[i] = 1;
-      } else if (settings.sizes["6"]){
+      } else if (settings.table_size["6"]){
         playersNeeded[i] = 4;
-      } else if (settings.sizes["9"]) {
+      } else if (settings.table_size["9"]) {
         playersNeeded[i] = 5;
       }
       playersWaiting[i] = 0;
@@ -239,26 +239,26 @@ function getSettings() {
     format = "tournament";
   }
 
-  let sizes = {
+  let table_size = {
     "2": false,
     "6": false,
     "9": false,
   };
 
   if (document.getElementById('filter-size-headsup').checked) {
-    sizes["2"] = true;
+    table_size["2"] = true;
   }
   if (document.getElementById('filter-size-6max').checked) {
-    sizes["6"] = true;
+    table_size["6"] = true;
   }
   if (document.getElementById('filter-size-fullring').checked) {
-    sizes["9"] = true;
+    table_size["9"] = true;
   }
 
   return {
     type,
     format,
-    sizes,
+    table_size,
   };
 }
 
@@ -270,16 +270,16 @@ function populateGamesTable(games){
   let row = thead.insertRow();
   const data = ["Game", "Name", "Players", "Table Size", "Blinds"];
   for(let key of data){
-    let td = document.createElement("td");
+    let th = document.createElement("th");
     let textNode = document.createTextNode(key);
-    td.appendChild(textNode);
-    row.appendChild(td);
+    th.appendChild(textNode);
+    row.appendChild(th);
   }
   for(let element of games){
     if ((element.type == settings.type
       || element.type == "any" )
       && element.format == settings.format
-      && settings.sizes["" + element.table_size]
+      && settings.table_size["" + element.table_size]
     ){
       elem = [
         element.type,
@@ -290,14 +290,16 @@ function populateGamesTable(games){
       ];
       let row = table.insertRow();
       for(key of elem){
-        let cell = row.insertCell();
+        let td = document.createElement("td");
         let textNode = document.createTextNode(key);
-        cell.appendChild(textNode);
+        td.appendChild(textNode);
+        row.appendChild(td);
       }
     }
   }
-  document.getElementById("poker-tables").innerHTML =
-    table.innerHTML;
+  document.getElementById("poker-tables").innerHTML = table.innerHTML;
+  filterTable();
+  listActiveGames();
 }
 
 function updateTable(){
@@ -321,11 +323,26 @@ function updateTable(){
   });
 }
 
-function filterTable(){
-  input = document.getElementbyId("searchGame");
+function filterTable() {
+  input = document.getElementById("search-game");
   filter = input.value.toUpperCase();
-  table = document.getElementbyId("poker-tables");
-  filter 
+  table = document.getElementById("poker-tables");
+  tr = table.getElementsByTagName("tr");
+  for (i = 1; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[1];
+    txtValue = td.textContent;
+    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+      tr[i].style.display = "";
+    } else {
+      tr[i].style.display = "none";
+    }
+  }
+}
+
+function listActiveGames() {
+  list = document.getElementById("active-games");
+  list.innerHTML = "";
+
 }
 
 //populateGamesTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
@@ -333,4 +350,3 @@ function filterTable(){
 //i = setInterval(updateTable, 300);
 updateTable();
 populateSnapjoin();
-
