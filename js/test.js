@@ -6,12 +6,19 @@ script.addEventListener('load', function() {
 }, false);
 document.body.appendChild(script);
 
-function test() {
-  for(let i = 0; i < 20; i++){
-    $.get("/api/login/" + Math.floor(Math.random()*1000000), console.log)
-    $.post("/api/queue", '{"type": "nlhe", "format": "ring", "table_size": 6, "big_blind":  200}',
-      console.log)
+function add_random_players(num_randos) {
+  if (num_randos == 0) {
+    return;
   }
+  $.get("/api/login/" + Math.floor(Math.random()*1000000), function() {
+    $.post("/api/queue", '{"type": "nlhe", "format": "ring", "table_size": 6, "big_blind":  200}', function() {
+      add_random_players(num_randos - 1);
+    });
+  });
+}
+
+function test() {
+  add_random_players(20);
   get_games();
 }
 
