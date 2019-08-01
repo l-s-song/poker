@@ -38,7 +38,6 @@ FinalHand Best5Of7(vector<Card>& finalHand) {
     orderedSuit[c.GetSuit()].push_back(c.GetRank());
   }
   bool isFlush = false;
-  bool isStraightFlush = false;
   vector<Card> flushhand;
   for(int i = 0; i < 4; i++){
     if(orderedSuit[i].size() >= 5){
@@ -118,7 +117,6 @@ FinalHand Best5Of7(vector<Card>& finalHand) {
   if(isFlush){
     return {Flush, flushhand};
   }
-  bool isStraight = false;
   vector<int> presentRanks;
   int inarow = 1;
   for(int i = 13; i >= 2; i--){
@@ -179,6 +177,7 @@ bool compareFinalHands(const FinalHand& a, const FinalHand& b) {
         return aRank < bRank;
       }
     }
+    return false;
   } else {
     return a.handRank < b.handRank;
   }
