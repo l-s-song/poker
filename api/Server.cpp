@@ -155,9 +155,8 @@ void clear_queues() {
       }
       if (new_table_player_ids.size() <= settings.table_size / 2) {
         // New table is too small to create, so stop trying to make new tablesbl
-        for(string& new_table_player_id : new_table_player_ids) {
-          player_ids.push_back(new_table_player_id);
-        }
+        player_ids.clear();
+        player_ids.
         break;
       }
       // Generate table and game
