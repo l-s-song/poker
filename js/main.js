@@ -345,6 +345,43 @@ function listActiveGames() {
 
 }
 
+function activateTokenMode() {
+  let tokenMode = document.getElementsByClassName("token-mode");
+  let chipMode = document.getElementsByClassName("chip-mode");
+  for(let i = 0; i < chipMode.length; i++){
+    chipMode[i].classList.addClass("hidden");
+  }
+  for(let i = 0; i < tokenMode.length; i++){
+    tokenMode[i].classList.removeClass("hidden");
+  }
+}
+
+function activateChipMode() {
+  let tokenMode = document.getElementsByClassName("token-mode");
+  let chipMode = document.getElementsByClassName("chip-mode");
+  for(let i = 0; i < chipMode.length; i++){
+    console.log(chipMode[i]);
+    chipMode[i].classList.removeClass("hidden");
+  }
+  for(let i = 0; i < tokenMode.length; i++){
+    tokenMode[i].classList.addClass("hidden");
+  }
+}
+
+function openLoginForm() {
+  loginForm = document.getElementById("login-form");
+  loginForm.classList.remove("hidden");
+}
+
+function closeLoginForm() {
+  loginForm = document.getElementById("login-form");
+  loginForm.classList.add("hidden");
+}
+
+function signup() {
+
+}
+
 //populateGamesTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);
