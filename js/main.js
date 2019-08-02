@@ -382,6 +382,24 @@ function signup() {
 
 }
 
+function submitLoginForm() {
+  loginForm = document.getElementById("login-form");
+  email = loginForm.getElementById("email");
+  xhr = new XMLHttpRequest();
+  xhr.open('GET', 'api/login/' + email.value);
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      gamelist = JSON.parse(xhr.responseText);
+      //console.log(gamelist);
+      callback(gamelist);
+    } else {
+      console.error(xhr.status, xhr.responseText);
+      callback();
+    }
+  }
+  xhr.send();
+}
+
 //populateGamesTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);

@@ -5,12 +5,6 @@
 #include <map>
 #include <set>
 
-class Player {
-public:
-  int id;
-  string name;
-};
-
 class winnerData {
 public:
   int player;

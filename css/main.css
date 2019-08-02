@@ -157,11 +157,11 @@ aside {
   font-size: .6em;
 }
 
-.form-container {
+.login-form {
   padding: 0.5em;
 }
 
-.login-form {
+.formm-container {
   background-color: white;
   width: 150px;
   top: 50px;
@@ -169,11 +169,11 @@ aside {
   position: fixed;
 }
 
-.login-form label, .login-form h1, .login-form div {
+.formm-container label, .formm-container h1, .formm-container div {
   color: black;
 }
 
-.login-form input[type=text], input[type=password] {
+.formm-container input[type=text], input[type=password] {
   width: 80%;
   display: block;
 }

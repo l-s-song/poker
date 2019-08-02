@@ -45,15 +45,15 @@
 
     </div>
 
-    <div class="login-form hidden" id="login-form">
-      <form class="form-container" action="index.html" method="post">
+    <div class="form-container">
+      <form class="login-form hidden" id="login-form" onsubmit="submitLoginForm()">
         <h1>Login</h1>
 
         <label for="email"> <b>Email</b> </label>
-        <input type="text" placeholder="Enter Email" name="email" value="" required>
+        <input type="text" placeholder="Enter Email" name="email" value="" id="email" required>
 
         <label for="psw">Password</label>
-        <input type="password" placeholder="Enter Password" name="psw" value="" required>
+        <input type="password" placeholder="Enter Password" name="psw" value="">
 
         <button type="submit" class="btn">Login</button>
         <button type="button" onclick="closeLoginForm()" class="btn">Close</button>
