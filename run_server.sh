@@ -3,6 +3,8 @@
 sudo cp virtual_host.conf /etc/apache2/sites-available/000-default.conf
 if ! sudo service apache2 status > /dev/null; then
   sudo service apache2 start
+else
+  sudo service apache2 restart
 fi
 
 valgrind_id=$(sudo netstat -ltnp | grep ':8080' | grep -oP '([0-9]*)/valgrind.bin' | grep -oP '[0-9]*')
