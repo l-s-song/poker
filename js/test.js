@@ -11,7 +11,7 @@ function add_random_players(num_randos) {
     return;
   }
   $.get("/api/login/" + Math.floor(Math.random()*1000000), function() {
-    $.post("/api/queue", '{"type": "nlhe", "format": "ring", "table_size": 6, "big_blind":  200}', function() {
+    $.post("/api/queue", '{"types": ["nlhe"], "format": "ring", "table_sizes": [6], "big_blind":  200}', function() {
       add_random_players(num_randos - 1);
     });
   });
@@ -42,9 +42,7 @@ function get_games() {
 function get_table(table_id, callback){
   let table;
   $.get("/api/table/" + table_id, function(data, status) {
-    // console.log(data);
-    table = JSON.parse(data);
-    callback(table);
+    callback(data);
   })
 
 }

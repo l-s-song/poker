@@ -189,6 +189,7 @@ int main(){
 
     *response << "HTTP/1.1 200 OK\r\n"
               << "Set-Cookie: " << "session_id=" << session_id << "; path=/" << "\r\n"
+              << "Content-Type: application/json\r\n"
               << "Content-Length: " << content.size() << "\r\n"
               << "\r\n"
               << content;
