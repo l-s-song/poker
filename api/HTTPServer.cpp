@@ -108,30 +108,31 @@ int main(){
     shared_ptr<HttpServer::Request> request
   ) {
     string session_id = get_session_id(request);
+    vector<string> types;
+    string format;
+    vector<int> table_sizes;
+    int buy_in_or_big_blind;
     try {
       ptree pt;
       read_json(request->content, pt);
-      vector<string> types;
       for(auto& type : pt.get_child("types")) {
         types.push_back(type.second.get_value<string>());
       }
-      string format = pt.get<string>("format");
-      vector<int> table_sizes;
+      format = pt.get<string>("format");
       for(auto& table_size : pt.get_child("table_sizes")) {
         table_sizes.push_back(table_size.second.get_value<int>());
       }
-      int buy_in_or_big_blind;
       if (pt.count("buy_in") > 0){
         buy_in_or_big_blind = pt.get<int>("buy_in");
       } else {
         buy_in_or_big_blind = pt.get<int>("big_blind");
       }
-      string content = add_to_queue(session_id, types, format, table_sizes, buy_in_or_big_blind);
-
-      ok(response, content);
     } catch(const exception &e) {
       bad(response, "Malformed JSON");
     }
+
+    string content = add_to_queue(session_id, types, format, table_sizes, buy_in_or_big_blind);
+    ok(response, content);
   };
 
   server.resource["^/api/act"]["POST"] = [](
@@ -139,18 +140,21 @@ int main(){
     shared_ptr<HttpServer::Request> request
   ) {
     string session_id = get_session_id(request);
+    string table_id;
+    string action;
+    int bet_size;
     try {
       ptree pt;
       read_json(request->content, pt);
-      string table_id = pt.get<string>("table_id");
-      string action = pt.get<string>("action");
-      int bet_size = pt.get<int>("bet_size");
-      string content = player_act(session_id, table_id, action, bet_size);
-
-      ok(response, content);
+      table_id = pt.get<string>("table_id");
+      action = pt.get<string>("action");
+      bet_size = pt.get<int>("bet_size");
     } catch(const exception &e) {
       bad(response, "Malformed JSON");
     }
+
+    string content = player_act(session_id, table_id, action, bet_size);
+    ok(response, content);
   };
 
   server.resource["^/api/leave"]["POST"] = [](
@@ -158,16 +162,17 @@ int main(){
     shared_ptr<HttpServer::Request> request
   ) {
     string session_id = get_session_id(request);
+    string game_id;
     try {
       ptree pt;
       read_json(request->content, pt);
-      string game_id = pt.get<string>("game_id");
-      string content = player_leave(session_id, game_id);
-
-      ok(response, content);
+      game_id = pt.get<string>("game_id");
     } catch(const exception &e) {
       bad(response, "Malformed JSON");
     }
+
+    string content = player_leave(session_id, game_id);
+    ok(response, content);
   };
 
   server.resource["^/api/login/([0-9]+)$"]["GET"] = [](

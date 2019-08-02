@@ -202,7 +202,7 @@ void clear_queues() {
   for(auto& specific_queue : queue) {
     game_settings settings = specific_queue.first;
     if (settings.format != ring) {
-      throw "We haven't coded tournaments yet";
+      throw "We haven't coded tournaments or sitngos yet";
     }
     vector<string>& player_ids = specific_queue.second;
     // Keep trying to make new tables, if possible
@@ -210,9 +210,11 @@ void clear_queues() {
       // Collect player_ids to potentially make a new table
       vector<string> new_table_player_ids;
       for(string& player_id : player_ids) {
+        // If the table is full, we break
         if (new_table_player_ids.size() == settings.table_size) {
           break;
         }
+        // A player_id might have tried to queue up multiple times, but we make sure new_table_player_ids is all unique here
         bool is_already_used = false;
         for (string& new_table_player_id : new_table_player_ids) {
           if (new_table_player_id == player_id) {
@@ -225,9 +227,10 @@ void clear_queues() {
         }
       }
       if (new_table_player_ids.size() <= settings.table_size / 2) {
-        // New table is too small to create, so stop trying to make new tables from this queue
+        // New table is too small to create, so stop trying to make new tables from this specific queue
         break;
       }
+      // Remove player_id from this queue, including any other queues associated with that queue_entry
       for(string& player_id : player_ids) {
         remove_from_queue(player_id, settings);
       }
@@ -255,8 +258,8 @@ void clear_queues() {
 string add_to_queue(const string& player_id, const queue_entry& entry) {
   string ret = "{}";
   queue_mutex.lock();
-  all_players_mutex.lock_shared();
-  // Assumes that whether or not a setting exists in the queue
+
+  // Checks that all possible queues for this queue_entry do exist
   for(const game_type& type : entry.types) {
     for(int table_size : entry.table_sizes) {
       game_settings settings = {type, entry.format, table_size, entry.buy_in, entry.big_blind};
@@ -265,6 +268,8 @@ string add_to_queue(const string& player_id, const queue_entry& entry) {
       }
     }
   }
+
+  // If all of them exist, then we add the player to each queue and update their queue_entries list
   if (ret != "") {
     for(const game_type& type : entry.types) {
       for(int table_size : entry.table_sizes) {
@@ -272,8 +277,16 @@ string add_to_queue(const string& player_id, const queue_entry& entry) {
         queue[settings].push_back(player_id);
       }
     }
+    all_players_mutex.lock_shared();
+    player_mutexes[player_id]->lock();
+    all_players[player_id]->queue_entries.push_back(entry);
+    player_mutexes[player_id]->unlock();
+    all_players_mutex.unlock_shared();
+
+    // Try to clear the queues if possible
+    clear_queues();
   }
-  all_players_mutex.unlock_shared();
+
   queue_mutex.unlock();
   return ret;
 }
@@ -285,6 +298,24 @@ string add_to_queue(string session_id, const vector<string>& types, string forma
     return error_json("Player not logged in");
   }
   string invalid_settings = error_json("A queue with those settings does not exist");
+
+  // Verify validity of types, sizes, and formats, but does not check if a queue exists with those settings
+  if (types.size() > 2 || table_sizes.size() > 3) {
+    return invalid_settings;
+  }
+  if (types.size() == 2 && types[0] == types[1]) {
+    return invalid_settings;
+  }
+  if (table_sizes.size() >= 2) {
+    if (table_sizes[0] == table_sizes[1]) {
+      return invalid_settings;
+    }
+    if (table_sizes.size() == 3) {
+      if (table_sizes[2] == table_sizes[0] || table_sizes[2] == table_sizes[1]) {
+        return invalid_settings;
+      }
+    }
+  }
   for(const string& type : types) {
     if (!is_game_type(type)) {
       return invalid_settings;
@@ -293,6 +324,8 @@ string add_to_queue(string session_id, const vector<string>& types, string forma
   if (!is_game_format(format)) {
     return invalid_settings;
   }
+
+  // Construct queue_entry object
   queue_entry entry;
   for(const string& type : types) {
     entry.types.push_back(to_game_type(type));
@@ -304,7 +337,11 @@ string add_to_queue(string session_id, const vector<string>& types, string forma
   } else {
     entry.buy_in = buy_in_or_big_blind;
   }
+
+  // Add to queue
   string ret = add_to_queue(player_id, entry);
+
+  // Check if queue existed
   if (ret == "") {
     return invalid_settings;
   } else {
