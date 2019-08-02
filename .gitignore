@@ -6,4 +6,6 @@ api/PokerTerminal
 api/DebugServer
 api/Server
 api/rust_package
+api/.syntastic_cpp_config
 **/*.swp
+

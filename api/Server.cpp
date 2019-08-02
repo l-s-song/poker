@@ -7,9 +7,10 @@
 
 void init_server() {
   srand(time(NULL));
-  vector<int> big_blinds = {200, 400, 1000, 2000, 4000, 4, 10, 20, 40, 100};
+  vector<int> big_blinds = {4, 10, 20, 40, 100, 200, 400, 1000, 2000, 4000};
+  vector<int> buy_ins = {50, 100, 200, 500, 1000, 20000, 50000, 10000, 20000, 500000};
   for(game_type& type : vector<game_type>({nlhe, plo})) {
-    for(game_format& format : vector<game_format>({ring, sitngo, tournament})) {
+    for(game_format& format : vector<game_format>({ring, sitngo})) {
       for(int table_size : vector<int>{2,6,9}){
         if (format == ring) {
           for(int big_blind : big_blinds){
@@ -17,9 +18,10 @@ void init_server() {
             queue[settings];
           }
         } else if (format == sitngo) {
-
-        } else if (format == tournament) {
-
+          for(int buy_in : buy_ins) {
+            game_settings settings = {type, format, table_size, buy_in, -1};
+            queue[settings];
+          }
         } else {
           throw "No such format";
         }
@@ -43,8 +45,6 @@ void set_player_id(string session_id, string player_id) {
   session_id_to_player_id[session_id] = player_id;
   session_id_to_player_id_mutex.unlock();
 }
-
-mutex rand_mutex;
 
 int generate_int() {
   int ret;
@@ -185,7 +185,7 @@ void clear_queues() {
       }
       if (new_table_player_ids.size() <= settings.table_size / 2) {
         // New table is too small to create, so stop trying to make new tablesbl
-	      player_ids = previous_player_ids;
+        player_ids = previous_player_ids;
         break;
       }
       // Generate table and game
@@ -459,3 +459,4 @@ string get_table_from_id(string table_id) {
 
   return response;
 };
+

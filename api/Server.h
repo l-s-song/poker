@@ -103,6 +103,7 @@ shared_mutex all_tables_mutex;
 shared_mutex session_id_to_player_id_mutex;
 shared_mutex queue_mutex;
 map<game_settings, vector<string>> queue;
+mutex rand_mutex;
 
 #endif
 #define SERVER_H
