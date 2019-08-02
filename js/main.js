@@ -50,9 +50,9 @@ function addToQueue(bigBlind){
   }
   xhr.send(JSON.stringify(
     {
-      type: settings.type,
+      types: settings.types,
       format: settings.format,
-      table_size: 6,
+      table_sizes: settings.table_sizes,
       big_blind: bigBlind
     }
   ));
@@ -144,8 +144,8 @@ function getSnapjoinData(queueData, gameList) {
         if(playersNeeded[j] == -1
         && gameList[i].big_blind == bigBlinds[j]
         && settings.format == gameList[i].format
-        && (settings.type == "any" || settings.type == gameList[i].type)
-        && settings.table_size["" + gameList[i].table_size]
+        && settings.types.includes(gameList[i].type)
+        && settings.table_sizes.includes(gameList[i].table_size)
         && gameList[i].num_players < gameList[i].table_size
         ){
           playersNeeded[j] = Math.floor(gameList[i].table_size/2) + 1;
@@ -156,10 +156,9 @@ function getSnapjoinData(queueData, gameList) {
     //look through queue for players wanting the same settings
     for(let i = 0; i < playersNeeded.length; i++){
       for (let j = 0; j < queueData.length; j++){
-        if((settings.type == "any"
-          || settings.type == queueData[j].type)
+        if(  settings.types.includes(queueData[j].type)
           && settings.format == queueData[j].format
-          && settings.table_size[queueData[j].table_size]
+          && settings.table_sizes.includes(queueData[j].table_size)
           && bigBlinds[i] == queueData[j].big_blind
         ){
           queuePlayersNeeded = Math.floor(queueData[j].table_size/2) + 1;
@@ -176,19 +175,6 @@ function getSnapjoinData(queueData, gameList) {
           }
         }
       }
-    }
-  }
-//  if no one is in the queue and no tables are available
-  for(let i = 0; i < playersNeeded.length; i++){
-    if(playersNeeded[i] == -1){
-      if (settings.table_size["2"]){
-        playersNeeded[i] = 1;
-      } else if (settings.table_size["6"]){
-        playersNeeded[i] = 4;
-      } else if (settings.table_size["9"]) {
-        playersNeeded[i] = 5;
-      }
-      playersWaiting[i] = 0;
     }
   }
 
@@ -219,15 +205,19 @@ function updateSettings() {
 }
 
 function getSettings() {
-  let type = "";
+  let types = [];
   const isplo = document.getElementById('filter-game-plo').checked;
   const isnlhe = document.getElementById('filter-game-nlhe').checked;
-  if (isplo && isnlhe){
-    type = "any";
-  } else if (isplo){
-    type = "plo";
-  } else {
-    type = "nlhe";
+  const isany = document.getElementById('filter-game-any').checked;
+  if (isany){
+    isplo = true;
+    isnlhe = true;
+  }
+  if (isplo){
+    types.push("plo");
+  }
+  if (isnlhe){
+    types.push("nlhe");
   }
 
   let format = "";
@@ -239,26 +229,23 @@ function getSettings() {
     format = "tournament";
   }
 
-  let table_size = {
-    "2": false,
-    "6": false,
-    "9": false,
-  };
+  // sorted smallest to largest
+  let table_sizes = [];
 
   if (document.getElementById('filter-size-headsup').checked) {
-    table_size["2"] = true;
+    table_sizes.push(2);
   }
   if (document.getElementById('filter-size-6max').checked) {
-    table_size["6"] = true;
+    table_sizes.push(6);
   }
   if (document.getElementById('filter-size-fullring').checked) {
-    table_size["9"] = true;
+    table_sizes.push(9);
   }
 
   return {
-    type,
+    types,
     format,
-    table_size,
+    table_sizes,
   };
 }
 
@@ -276,10 +263,10 @@ function populateGamesTable(games){
     row.appendChild(th);
   }
   for(let element of games){
-    if ((element.type == settings.type
-      || element.type == "any" )
+    if (
+         settings.types.includes(element.type)
       && element.format == settings.format
-      && settings.table_size["" + element.table_size]
+      && settings.table_sizes.includes(element.table_size)
     ){
       elem = [
         element.type,
@@ -382,16 +369,19 @@ function signup() {
 
 }
 
-function submitLoginForm() {
+function submitLoginForm(callback) {
+  email = document.getElementById("email");
   loginForm = document.getElementById("login-form");
-  email = loginForm.getElementById("email");
+  loginForm.classList.add("hidden");
+
+  if(!callback) {
+    callback = function() {}
+  }
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'api/login/' + email.value);
   xhr.onload = function() {
     if (xhr.status === 200) {
-      gamelist = JSON.parse(xhr.responseText);
-      //console.log(gamelist);
-      callback(gamelist);
+      callback();
     } else {
       console.error(xhr.status, xhr.responseText);
       callback();

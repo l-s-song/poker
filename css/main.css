@@ -161,7 +161,7 @@ aside {
   padding: 0.5em;
 }
 
-.formm-container {
+.form-container {
   background-color: white;
   width: 150px;
   top: 50px;
@@ -169,11 +169,11 @@ aside {
   position: fixed;
 }
 
-.formm-container label, .formm-container h1, .formm-container div {
+.form-container label, .form-container h1, .form-container div {
   color: black;
 }
 
-.formm-container input[type=text], input[type=password] {
+.form-container input[type=text], input[type=password] {
   width: 80%;
   display: block;
 }
