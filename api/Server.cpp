@@ -11,9 +11,9 @@ void init_server() {
   vector<int> buy_ins = {50, 100, 200, 500, 1000, 20000, 50000, 10000, 20000, 500000};
   for(game_type& type : vector<game_type>({nlhe, plo})) {
     for(game_format& format : vector<game_format>({ring, sitngo})) {
-      for(int table_size : vector<int>{2,6,9}){
+      for(int table_size : vector<int>{2,6,9}) {
         if (format == ring) {
-          for(int big_blind : big_blinds){
+          for(int big_blind : big_blinds) {
             game_settings settings = {type, format, table_size, -1, big_blind};
             queue[settings];
           }
@@ -221,7 +221,7 @@ void clear_queues() {
         break;
       }
       // Otherwise, we remove from the queue, and then add them to waiting_players
-      string& player_id = queue[settings][new_player_index];
+      string& player_id = specific_queue[new_player_index];
       remove_from_queue(player_id, settings);
       g->waiting_players.push_back(player_id);
     }
@@ -233,9 +233,12 @@ void clear_queues() {
   for(auto& specific_queue : queue) {
     // These are the settings that this queue of players are looking for in a game
     game_settings settings = specific_queue.first;
-    if (settings.format != ring) {
-      throw "We haven't coded tournaments or sitngos yet";
+
+    if (settings.format == sitngo) {
+      // TODO: Handle queues for sitngos
+      continue;
     }
+
     // These are the players in the queue
     vector<string>& player_ids = specific_queue.second;
     // Keep trying to make new tables, indefinitely, until the queue runs out
@@ -265,9 +268,10 @@ void clear_queues() {
         break;
       }
       // Remove player_id from this queue, including any other queues associated with that queue_entry
-      for(string& player_id : player_ids) {
+      for(string& player_id : new_table_player_ids) {
         remove_from_queue(player_id, settings);
       }
+
       // Generate table and game
       string table_id = generate_id();
       string game_id = generate_id();
@@ -276,11 +280,13 @@ void clear_queues() {
       Table* table = new Table{table_id, game_id, new_table_player_ids, hs};
       Game* game = new Game(game_id, "NYC", settings, {table_id}, new_table_player_ids);
 
+      // Add table to master table list
       all_tables_mutex.lock();
       all_tables[table_id] = table;
       table_mutexes[table_id] = new shared_mutex;
       all_tables_mutex.unlock();
 
+      // Add game to master game list
       all_games_mutex.lock();
       all_games[game_id] = game;
       game_mutexes[game_id] = new shared_mutex;
