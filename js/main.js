@@ -390,6 +390,8 @@ function submitLoginForm(callback) {
   xhr.send();
 }
 
+
+
 //populateGamesTable([{type:"NLHE", city:"Anchorage", active_players:3, table_size:6, bigblind:200},
 //  {type:"PLO", city:"Seattle", active_players:2, table_size:6, bigblind:100}]);
 //i = setInterval(updateTable, 300);

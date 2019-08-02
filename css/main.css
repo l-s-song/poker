@@ -177,3 +177,21 @@ aside {
   width: 80%;
   display: block;
 }
+
+.error-notification {
+  background: red;
+  width: 24vw;
+  height: 3vw;
+  top: 10px;
+  left: 38vw;
+  position: fixed;
+}
+
+.error-notification p {
+  display: inline;
+}
+
+.error-notification div {
+  padding-top: 1vw;
+  margin: auto;
+}

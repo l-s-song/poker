@@ -6,6 +6,11 @@
   <title>Poker</title>
 </head>
 <body>
+  <div class="error-notification">
+    <div>
+      <p>Error</p>
+    </div>
+  </div>
   <header>
     <div class="header">
 
@@ -46,7 +51,7 @@
     </div>
 
     <div class="form-container">
-      <form class="login-form hidden" id="login-form" onsubmit="false">
+      <form class="login-form hidden" id="login-form" onsubmit="return false">
         <h1>Login</h1>
 
         <label for="email"> <b>Email</b> </label>
