@@ -6,6 +6,11 @@
   <title>Poker</title>
 </head>
 <body>
+  <div class="error-notification">
+    <div>
+      <p>Error</p>
+    </div>
+  </div>
   <header>
     <div class="header">
 
@@ -46,7 +51,7 @@
     </div>
 
     <div class="form-container">
-      <form class="login-form hidden" id="login-form" onsubmit="submitLoginForm()">
+      <form class="login-form hidden" id="login-form" onsubmit="return false">
         <h1>Login</h1>
 
         <label for="email"> <b>Email</b> </label>
@@ -55,8 +60,8 @@
         <label for="psw">Password</label>
         <input type="password" placeholder="Enter Password" name="psw" value="">
 
-        <button type="submit" class="btn">Login</button>
-        <button type="button" onclick="closeLoginForm()" class="btn">Close</button>
+        <button type="submit" onclick="submitLoginForm()" class="btn">Login</button>
+        <button type="submit" onclick="closeLoginForm()" class="btn">Close</button>
         <div class="remember">
           <input type="checkbox" name="remember" value="" checked="checked">Remember me
         </div>
