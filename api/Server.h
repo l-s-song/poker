@@ -100,7 +100,7 @@ map<string, shared_mutex*> player_mutexes;
 map<string, shared_mutex*> game_mutexes;
 map<string, shared_mutex*> table_mutexes;
 map<string, string> session_id_to_player_id;
-shared_mutex all_players_mutex;
+shared_mutex all_players_mutex;w
 shared_mutex all_games_mutex;
 shared_mutex all_tables_mutex;
 shared_mutex session_id_to_player_id_mutex;

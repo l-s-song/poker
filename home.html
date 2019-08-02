@@ -8,20 +8,59 @@
 <body>
   <header>
     <div class="header">
+
       <div class="left-header">
+
+        <div class="token-mode hidden">
+          <button type="button" onclick="activateChipMode()" id="swap-to-chips">Swap to Chips</button>
+        </div>
+
+        <div class="chip-mode hidden">
+          <button type="button" onclick="activateTokenMode()" id="swap-to-tokens">Swap to Tokens</button>
+        </div>
+
       </div>
+
       <div class="right-header">
-        <button class="swap-currency" type="button" name="button">Play Sweepstakes</button>
-        <div class="balance-display">
-          <div class="currency">
 
+        <div class="not-logged-in">
+          <button type="button" onclick="openLoginForm()" id="login">Login</button>
+          <button type="button" onclick="signUp()" id="sign-up">Sign Up</button>
+        </div>
+
+        <div class="balance-info token-mode hidden">
+          <div class="account-balance">
+            <p>242,000 Tokens</p>
           </div>
-          <div class="balance">
+          <button type="button" id="buy-tokens">Buy Tokens</button>
+        </div>
 
+        <div class="balance-info chip-mode hidden">
+          <div class="account-balance">
+            <p>19.20 Chips</p>
           </div>
         </div>
-        <button type="button" name="button">Cashier</button>
+
       </div>
+
+    </div>
+
+    <div class="login-form hidden" id="login-form">
+      <form class="form-container" action="index.html" method="post">
+        <h1>Login</h1>
+
+        <label for="email"> <b>Email</b> </label>
+        <input type="text" placeholder="Enter Email" name="email" value="" required>
+
+        <label for="psw">Password</label>
+        <input type="password" placeholder="Enter Password" name="psw" value="" required>
+
+        <button type="submit" class="btn">Login</button>
+        <button type="button" onclick="closeLoginForm()" class="btn">Close</button>
+        <div class="remember">
+          <input type="checkbox" name="remember" value="" checked="checked">Remember me
+        </div>
+      </form>
     </div>
   </header>
   <section class="center">

@@ -133,3 +133,47 @@ aside {
   border: 1px solid #c0c0c0;
   border-collapse: collapse;
 }
+
+.header {
+  height: 50px;
+  font-size: 1.5em;
+  padding-top: 5px;
+  padding-right: 10px;
+}
+
+.left-header {
+  float: left;
+}
+
+.right-header {
+  float: right;
+}
+
+.balance-info {
+  display: flex;
+}
+
+.account-balance {
+  font-size: .6em;
+}
+
+.form-container {
+  padding: 0.5em;
+}
+
+.login-form {
+  background-color: white;
+  width: 150px;
+  top: 50px;
+  right: 50px;
+  position: fixed;
+}
+
+.login-form label, .login-form h1, .login-form div {
+  color: black;
+}
+
+.login-form input[type=text], input[type=password] {
+  width: 80%;
+  display: block;
+}
