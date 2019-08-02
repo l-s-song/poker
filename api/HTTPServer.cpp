@@ -111,16 +111,22 @@ int main(){
     try {
       ptree pt;
       read_json(request->content, pt);
-      string type = pt.get<string>("type");
+      vector<string> types;
+      for(auto& type : pt.get_child("types")) {
+        types.push_back(type.second.get_value<string>());
+      }
       string format = pt.get<string>("format");
-      int table_size = pt.get<int>("table_size");
+      vector<int> table_sizes;
+      for(auto& table_size : pt.get_child("table_sizes")) {
+        table_sizes.push_back(table_size.second.get_value<int>());
+      }
       int buy_in_or_big_blind;
       if (pt.count("buy_in") > 0){
         buy_in_or_big_blind = pt.get<int>("buy_in");
       } else {
         buy_in_or_big_blind = pt.get<int>("big_blind");
       }
-      string content = add_to_queue(session_id, type, format, table_size, buy_in_or_big_blind);
+      string content = add_to_queue(session_id, types, format, table_sizes, buy_in_or_big_blind);
 
       ok(response, content);
     } catch(const exception &e) {

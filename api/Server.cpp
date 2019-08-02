@@ -42,7 +42,14 @@ string get_player_id(string session_id) {
 
 void set_player_id(string session_id, string player_id) {
   session_id_to_player_id_mutex.lock();
+  all_players_mutex.lock();
   session_id_to_player_id[session_id] = player_id;
+  if (!all_players.count(player_id)) {
+    // Create new player
+    all_players[player_id];
+    player_mutexes[player_id] = new shared_mutex;
+  }
+  all_players_mutex.unlock();
   session_id_to_player_id_mutex.unlock();
 }
 
@@ -104,8 +111,46 @@ string get_queues() {
   return s;
 }
 
+// Removes player_id from the queue related to settings
+void remove_from_queue(const string& player_id, const game_settings& settings) {
+  vector<queue_entry>& entries = all_players[player_id]->queue_entries;
+  int queue_entry_index = -1;
+  for(int i = 0; i < entries.size(); i++) {
+    bool valid_type = false;
+    for(game_type& type : entries[i].types) {
+      if (settings.type == type) {
+        valid_type = true;
+      }
+    }
+    bool valid_format = (entries[i].format == settings.format);
+    bool valid_size = false;
+    for(int table_size : entries[i].table_sizes) {
+      if (settings.table_size == table_size) {
+        valid_size = true;
+      }
+    }
+    if (valid_type && valid_format && valid_size && settings.big_blind == entries[i].big_blind && settings.buy_in == entries[i].buy_in) {
+      queue_entry_index = i;
+      break;
+    }
+  }
+  if (queue_entry_index == -1) {
+    throw "No valid queue found";
+  }
+  queue_entry& entry = entries[queue_entry_index];
+  for(game_type& type : entry.types) {
+    for(int table_size : entry.table_sizes) {
+      game_settings specific_queue_setting = {type, entry.format, table_size, entry.buy_in, entry.big_blind};
+      vector<string>& player_ids = queue[specific_queue_setting];
+      auto it = find(player_ids.begin(), player_ids.end(), player_id);
+      player_ids.erase(it);
+    }
+  }
+  entries.erase(entries.begin() + queue_entry_index);
+}
+
 // Moves players from the queues to existing games, and then potentially makes a new game if the queue is large enough
-// queue_mutex must be locked in order to call this
+// queue_mutex and all_players_mutex must be locked in order to call this
 void clear_queues() {
   //fill existing nonempty tables
   all_games_mutex.lock_shared();
@@ -113,7 +158,7 @@ void clear_queues() {
     const string& game_id = elem.first;
     game_mutexes[game_id]->lock();
     Game* g = elem.second;
-    game_settings settings = g->settings;
+    game_settings& settings = g->settings;
     vector<string>& specific_queue = queue[settings];
     while( specific_queue.size() > 0
         && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
@@ -147,7 +192,7 @@ void clear_queues() {
         break;
       }
       string& player_id = queue[settings][new_player_index];
-      queue[settings].erase(queue[settings].begin() + new_player_index);
+      remove_from_queue(player_id, settings);
       g->waiting_players.push_back(player_id);
     }
     game_mutexes[game_id]->unlock();
@@ -164,12 +209,10 @@ void clear_queues() {
     while(true){
       // Collect player_ids to potentially make a new table
       vector<string> new_table_player_ids;
-      vector<string> previous_player_ids = player_ids;
-      for(int i = 0; i < player_ids.size(); i++) {
+      for(string& player_id : player_ids) {
         if (new_table_player_ids.size() == settings.table_size) {
           break;
         }
-        string& player_id = player_ids[i];
         bool is_already_used = false;
         for (string& new_table_player_id : new_table_player_ids) {
           if (new_table_player_id == player_id) {
@@ -179,14 +222,14 @@ void clear_queues() {
         }
         if (!is_already_used) {
           new_table_player_ids.push_back(player_id);
-          player_ids.erase(player_ids.begin() + i);
-          i--;
         }
       }
       if (new_table_player_ids.size() <= settings.table_size / 2) {
-        // New table is too small to create, so stop trying to make new tablesbl
-        player_ids = previous_player_ids;
+        // New table is too small to create, so stop trying to make new tables from this queue
         break;
+      }
+      for(string& player_id : player_ids) {
+        remove_from_queue(player_id, settings);
       }
       // Generate table and game
       string table_id = generate_id();
@@ -209,37 +252,59 @@ void clear_queues() {
   }
 }
 
-string add_to_queue(const string& player_id, const game_settings& settings) {
+string add_to_queue(const string& player_id, const queue_entry& entry) {
   string ret = "{}";
   queue_mutex.lock();
-  if (queue.count(settings)) {
-    vector<string>& player_ids = queue[settings];
-    player_ids.push_back(player_id);
-    clear_queues();
-  } else {
-    ret = "";
+  all_players_mutex.lock_shared();
+  // Assumes that whether or not a setting exists in the queue
+  for(const game_type& type : entry.types) {
+    for(int table_size : entry.table_sizes) {
+      game_settings settings = {type, entry.format, table_size, entry.buy_in, entry.big_blind};
+      if (!queue.count(settings)) {
+        ret = "";
+      }
+    }
   }
+  if (ret != "") {
+    for(const game_type& type : entry.types) {
+      for(int table_size : entry.table_sizes) {
+        game_settings settings = {type, entry.format, table_size, entry.buy_in, entry.big_blind};
+        queue[settings].push_back(player_id);
+      }
+    }
+  }
+  all_players_mutex.unlock_shared();
   queue_mutex.unlock();
   return ret;
 }
 
-string add_to_queue(string session_id, string type, string format, int table_size, int buy_in_or_big_blind) {
+string add_to_queue(string session_id, const vector<string>& types, string format, const vector<int>& table_sizes, int buy_in_or_big_blind) {
   //player joining game
   string player_id = get_player_id(session_id);
   if (player_id == "") {
     return error_json("Player not logged in");
   }
   string invalid_settings = error_json("A queue with those settings does not exist");
-  if (!is_game_type(type) || !is_game_format(format)) {
+  for(const string& type : types) {
+    if (!is_game_type(type)) {
+      return invalid_settings;
+    }
+  }
+  if (!is_game_format(format)) {
     return invalid_settings;
   }
-  game_settings settings = {to_game_type(type), to_game_format(format), table_size, -1, -1};
-  if (settings.format == ring) {
-    settings.big_blind = buy_in_or_big_blind;
-  } else {
-    settings.buy_in = buy_in_or_big_blind;
+  queue_entry entry;
+  for(const string& type : types) {
+    entry.types.push_back(to_game_type(type));
   }
-  string ret = add_to_queue(player_id, settings);
+  entry.format = to_game_format(format);
+  entry.table_sizes = table_sizes;
+  if (entry.format == ring) {
+    entry.big_blind = buy_in_or_big_blind;
+  } else {
+    entry.buy_in = buy_in_or_big_blind;
+  }
+  string ret = add_to_queue(player_id, entry);
   if (ret == "") {
     return invalid_settings;
   } else {
@@ -296,7 +361,9 @@ void start_new_hand(string table_id) {
     table->hand_sim = move(hs);
   } else {
     for(string& player_id : player_ids) {
-      add_to_queue(player_id, game->settings);
+      game_settings& settings = game->settings;
+      queue_entry entry = {{settings.type}, settings.format, {settings.table_size}, settings.big_blind, settings.buy_in};
+      add_to_queue(player_id, entry);
     }
     all_games.erase(game_id);
     all_tables.erase(table_id);

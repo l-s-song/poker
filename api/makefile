@@ -21,7 +21,7 @@ HandSimulation.h.gch: HandSimulation.h HandLogic.h Deck.h Card.h
 HTTPServer.h.gch: HTTPServer.h
 	$(CXX) $(CXXFLAGS) -o HTTPServer.h.gch HTTPServer.h
 
-HTTPServer.o: HTTPServer.cpp HTTPServer.h.gch
+HTTPServer.o: HTTPServer.cpp HTTPServer.h.gch APIFunctions.h
 	$(CXX) $(CXXFLAGS) -c HTTPServer.cpp
 
 PokerTerminal: HandSimulation.h HandLogic.h Deck.h Card.h

@@ -3,6 +3,7 @@
 
 #include <shared_mutex>
 #include <string>
+#include <algorithm>
 
 int default_blind_timer = 10;
 
@@ -72,22 +73,24 @@ struct Table {
 };
 
 struct player_settings {
-
+  bool four_colored_deck;
 };
 
 struct queue_entry {
   vector<game_type> types;
   game_format format;
   vector<int> table_sizes;
+  int big_blind = -1;
+  int buy_in = -1;
 };
 
 struct Player {
   vector<queue_entry> queue_entries;
+  vector<string> game_ids;
+  vector<string> table_ids;
   player_settings settings;
   int chips;
   int tokens;
-  vector<string> game_ids;
-  vector<string> table_ids;
 };
 
 map<string, Player*> all_players;
