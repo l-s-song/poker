@@ -4,8 +4,10 @@
 #include <shared_mutex>
 #include <string>
 #include <algorithm>
+#include <ctime>
 
-int default_blind_timer = 10;
+// In seconds
+int default_blind_time = 600;
 
 enum game_type {
   nlhe,
@@ -36,28 +38,38 @@ struct Game {
   string id;
   string name;
   game_settings settings;
-  // TODO: Tournaments
-  //int big_blind = -1;
-  //int blind_timer = -1;
   vector<string> player_ids;
   vector<string> table_ids;
   vector<string> leaving_players;
   vector<string> waiting_players;
 
+  // Tournament / SitnGo blind info
+  int big_blind = -1;
+  long long last_blind_level = -1;
+  int time_between_blind_levels = -1;
+
   Game(string id, string name, game_settings& settings, vector<string> table_ids, vector<string> player_ids) {
     this->id = id;
     this->name = name;
     this->settings = settings;
-    //tournament functionality
-    /*
+
     if(settings.format == sitngo || settings.format == tournament){
       big_blind = 2;
-      blind_timer = default_blind_timer;
+      time_between_blind_levels = default_blind_time;
+      last_blind_level = (long long) std::time(nullptr);
     }
-    */
+
     this->player_ids = player_ids;
     this->table_ids = table_ids;
   };
+
+  void update_blinds() {
+    long long delta = ((long long) std::time(nullptr)) - last_blind_level;
+    if (delta > time_between_blind_levels) {
+      big_blind *= 2;
+      last_blind_level = (long long) std::time(nullptr);
+    }
+  }
 
   string to_json();
   string to_json(int numtab);
@@ -73,7 +85,7 @@ struct Table {
 };
 
 struct player_settings {
-  bool four_colored_deck;
+  bool four_colored_deck = false;
 };
 
 struct queue_entry {
@@ -85,12 +97,13 @@ struct queue_entry {
 };
 
 struct Player {
+  string id;
   vector<queue_entry> queue_entries;
   vector<string> game_ids;
   vector<string> table_ids;
   player_settings settings;
-  int chips;
-  int tokens;
+  int chips = 0;
+  int tokens = 0;
 };
 
 map<string, Player*> all_players;

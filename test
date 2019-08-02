@@ -46,10 +46,7 @@ void set_player_id(string session_id, string player_id) {
   session_id_to_player_id[session_id] = player_id;
   if (!all_players.count(player_id)) {
     // Create new player
-    all_players[player_id] = new Player;
-    all_players[player_id]->id = player_id;
-    all_players[player_id]->chips = 2400;
-    all_players[player_id]->tokens = 1500000;
+    all_players[player_id];
     player_mutexes[player_id] = new shared_mutex;
   }
   all_players_mutex.unlock();
@@ -115,7 +112,6 @@ string get_queues() {
 }
 
 // Removes player_id from the queue related to settings
-// Expects queue_mutex to be locked
 void remove_from_queue(const string& player_id, const game_settings& settings) {
   all_players_mutex.lock_shared();
   player_mutexes[player_id]->lock();
@@ -170,29 +166,19 @@ void remove_from_queue(const string& player_id, const game_settings& settings) {
 // Moves players from the queues to existing games, and then potentially makes a new game if the queue is large enough
 // queue_mutex must be locked in order to call this
 void clear_queues() {
-  // For ring games, we move players from the queue to already existing tables, if possible
+  //fill existing nonempty tables
   all_games_mutex.lock_shared();
   for(auto& elem : all_games){
     const string& game_id = elem.first;
-    // Settings will never change after initialization, so we don't need to use a mutex
-    if (all_games[game_id]->settings.format != ring) {
-      continue;
-    }
-
     game_mutexes[game_id]->lock();
     Game* g = elem.second;
     game_settings& settings = g->settings;
-    // This is the queue of players who are trying to join any game with the same settings as game g
     vector<string>& specific_queue = queue[settings];
-
-    // While there's still people in the queue, and there's still room in the game
     while( specific_queue.size() > 0
         && (g->player_ids.size() + g->waiting_players.size()) < g->settings.table_size
     ) {
-      // We find someone in the specific queue who is not yet playing in the game g
       int new_player_index = -1;
       for (int i = 0; i < specific_queue.size(); i++) {
-        // For each player_id in the specific queue, already_playing is set to true if they're already playing in the game g
         string& player_id = specific_queue[i];
         bool already_playing = false;
         for (string& id : g->player_ids) {
@@ -210,17 +196,15 @@ void clear_queues() {
             already_playing = true;
           }
         }
-        // If they're not already playing, then we've found someone in the specific queue who can now join game g
         if (!already_playing) {
           new_player_index = i;
           break;
         }
       }
-      // If there are no players in the specific queue who aren't already playing in game g, then we give up on seating players into game g
       if (new_player_index == -1) {
+        // Everyone in the queue, is already sitting at this table
         break;
       }
-      // Otherwise, we remove from the queue, and then add them to waiting_players
       string& player_id = queue[settings][new_player_index];
       remove_from_queue(player_id, settings);
       g->waiting_players.push_back(player_id);
@@ -228,17 +212,14 @@ void clear_queues() {
     game_mutexes[game_id]->unlock();
   }
   all_games_mutex.unlock_shared();
-
-  // Now, we find any queues that are so large that we're ready to make a new game for them
+  // Populating new tables
   for(auto& specific_queue : queue) {
-    // These are the settings that this queue of players are looking for in a game
     game_settings settings = specific_queue.first;
     if (settings.format != ring) {
       throw "We haven't coded tournaments or sitngos yet";
     }
-    // These are the players in the queue
     vector<string>& player_ids = specific_queue.second;
-    // Keep trying to make new tables, indefinitely, until the queue runs out
+    // Keep trying to make new tables, if possible
     while(true){
       // Collect player_ids to potentially make a new table
       vector<string> new_table_player_ids;
@@ -247,7 +228,7 @@ void clear_queues() {
         if (new_table_player_ids.size() == settings.table_size) {
           break;
         }
-        // A player_id might have tried to queue up multiple times, but we make sure new_table_player_ids has only unique players
+        // A player_id might have tried to queue up multiple times, but we make sure new_table_player_ids is all unique here
         bool is_already_used = false;
         for (string& new_table_player_id : new_table_player_ids) {
           if (new_table_player_id == player_id) {
@@ -255,7 +236,6 @@ void clear_queues() {
             break;
           }
         }
-        // Only add to new_table_player_ids if player_id is not already in new_table_player_ids
         if (!is_already_used) {
           new_table_player_ids.push_back(player_id);
         }
@@ -289,7 +269,6 @@ void clear_queues() {
   }
 }
 
-// Gives the player a new queue entry, and puts the player in each queue associated with that queue entry
 string add_to_queue(const string& player_id, const queue_entry& entry) {
   string ret = "{}";
   queue_mutex.lock();
@@ -327,9 +306,7 @@ string add_to_queue(const string& player_id, const queue_entry& entry) {
 }
 
 // Gives the player a new queue entry, and puts the player in each queue associated with that queue entry
-// This is a wrapper for the real add_to_queue above. HTTPServer.cpp will call this function
 string add_to_queue(string session_id, const vector<string>& types, string format, const vector<int>& table_sizes, int buy_in_or_big_blind) {
-  //player joining game
   string player_id = get_player_id(session_id);
   if (player_id == "") {
     return error_json("Player not logged in");
@@ -386,88 +363,68 @@ string add_to_queue(string session_id, const vector<string>& types, string forma
   }
 }
 
-// This will start a new hand for the given table_id
-// requires: all_tables[table_id]->hand_sim.isHandOver()
-void start_new_hand(const string& table_id) {
+// requires: tables[table_id].hand_sim.isHandOver()
+void start_new_hand(string table_id) {
+  // Awarding money from prevous hand
+  // Get buttonLocation and vector<int> stacks from previous handsim
+  // Clear out any players that are in game.leaving_players
+  // Add waiting_players into the game
+  // Create new handsim based on previous handsim
+  // break up game and add players to queue
   all_tables_mutex.lock();
   all_games_mutex.lock();
-
-  // Award the money from the previous pot
   Table* table = all_tables[table_id];
   HandSimulation* hand_sim = &table->hand_sim;
   hand_sim->awardWinners();
-
-  // We grab some old information first
   int buttonLocation = hand_sim->getButtonLocation();
   vector<int> stacks = hand_sim->getStacks();
   vector<string> player_ids = table->player_ids;
   string& game_id = table->game_id;
   Game* game = all_games[game_id];
-
-  if (game->settings.format == ring) {
-    // Remove leaving_players from the table
-    for(string& player_id : game->leaving_players) {
-      // For each player_id in leaving_players, we find the index of the player in player_ids, and then erase them from player_ids
-      for(int i = 0; i < player_ids.size(); i++) {
-        if (player_ids[i] == player_id) {
-          player_ids.erase(player_ids.begin() + i);
-          stacks.erase(stacks.begin() + i);
-          i--;
-        }
+  //remove leaving_players
+  for(string& player_id : game->leaving_players) {
+    for(int i = 0; i < player_ids.size(); i++) {
+      if (player_ids[i] == player_id) {
+        player_ids.erase(player_ids.begin() + i);
+        stacks.erase(stacks.begin() + i);
+        i--;
       }
-    }
-
-    // Add waiting_players to the table, each with 100BB
-    for(string& player_id : game->waiting_players) {
-      player_ids.push_back(player_id);
-      stacks.push_back(100*game->settings.big_blind);
-    }
-
-    // Update game and table information
-    game->player_ids = player_ids;
-    game->leaving_players.clear();
-    game->waiting_players.clear();
-    table->player_ids = player_ids;
-
-    // If the game is too small, we have to break it up
-    if(player_ids.size() <= game->settings.table_size/2) {
-      for(string& player_id : player_ids) {
-        // Automatically queue the players back up
-        game_settings& settings = game->settings;
-        queue_entry entry = {{settings.type}, settings.format, {settings.table_size}, settings.big_blind, settings.buy_in};
-        add_to_queue(player_id, entry);
-      }
-      all_games.erase(game_id);
-      all_tables.erase(table_id);
-      delete table;
-      delete game;
-      delete game_mutexes[game_id];
-      delete table_mutexes[table_id];
-      game_mutexes.erase(game_id);
-      table_mutexes.erase(table_id);
     }
   }
-
-  // We check that the game didn't break up first
-  if (all_games.count(game_id)) {
-    // TODO: implement dead button / dead small blind
-    buttonLocation += 1;
-    buttonLocation %= game->settings.table_size;
-
-    int big_blind;
-    if (game->settings.format == ring) {
-      big_blind = game->settings.big_blind;
-    } else {
-      game->update_blinds();
-      big_blind = game->big_blind;
-    }
-
-    // Create the hand simulation for the next hand
+  //add waiting_players
+  // TODO: Fix for tournaments
+  for(string& player_id : game->waiting_players) {
+    player_ids.push_back(player_id);
+    stacks.push_back(100*game->settings.big_blind);
+  }
+  //updating table and game
+  game->player_ids = player_ids;
+  game->leaving_players.clear();
+  game->waiting_players.clear();
+  table->player_ids = player_ids;
+  // TODO: dead button, dead smallBlind
+  buttonLocation += 1;
+  buttonLocation %= game->settings.table_size;
+  if(player_ids.size() > game->settings.table_size/2){
+    int big_blind = game->settings.big_blind; // game->settings.format == ring ? game->settings.big_blind : game->big_blind
     HandSimulation hs(big_blind, buttonLocation, stacks);
     hs.initBettingRound();
     table->hand_sim = move(hs);
+  } else {
+    for(string& player_id : player_ids) {
+      game_settings& settings = game->settings;
+      queue_entry entry = {{settings.type}, settings.format, {settings.table_size}, settings.big_blind, settings.buy_in};
+      add_to_queue(player_id, entry);
+    }
+    all_games.erase(game_id);
+    all_tables.erase(table_id);
+    delete table;
+    delete game;
+    delete game_mutexes[game_id];
+    delete table_mutexes[table_id];
+    game_mutexes.erase(game_id);
+    table_mutexes.erase(table_id);
   }
-
   all_games_mutex.unlock();
   all_tables_mutex.unlock();
 }
@@ -480,11 +437,8 @@ string player_leave(string session_id, string game_id){
 
   string ret;
   all_games_mutex.lock_shared();
-
   if(all_games.count(game_id) == 0){
     ret = error_json("Game does not exist.");
-  } else if (all_games[game_id]->settings.format != ring) {
-    ret = error_json("This game is not a ring game. Players are only allowed to leave ring games once they have started.");
   } else {
     game_mutexes[game_id]->lock();
     Game* game = all_games[game_id];
