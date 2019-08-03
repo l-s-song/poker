@@ -8,4 +8,8 @@ api/Server
 api/rust_package
 api/.syntastic_cpp_config
 **/*.swp
+art/*.png
+images/table.png
+images/act_buttons.png
+images/player_button.png
 

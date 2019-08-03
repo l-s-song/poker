@@ -32,3 +32,6 @@ sudo apt install libssl-dev
 sudo apt install valgrind
 sudo apt install net-tools
 
+# Install inkscape
+sudo apt install inkscape
+

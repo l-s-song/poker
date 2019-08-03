@@ -1,4 +1,4 @@
-CXX = g++
+CXX = g++-7
 CXXFLAGS = -fmax-errors=1 -g -std=c++17 -Wall -Wno-sign-compare
 
 .PHONY: debug prod
